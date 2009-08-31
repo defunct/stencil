@@ -1,0 +1,18 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns:s="flag://stencil.agtrz.com/snippits"
+xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title><s:snippit name="title">Hello, <s:var name="betty.firstName"/>!</s:snippit></title>
+</head>
+<body>
+  <p s:snippit="lastNameFirst">
+    Last Name First: <s:var name="lastName"/>, <s:var name="firstName"/>
+  </p>
+  <s:snippit name="person">
+  <p>First Name: <s:var name="betty.firstName">Fred</s:var></p>
+  <p>Last Name: <s:var name="betty.lastName">Flintstone</s:var></p>
+  </s:snippit>
+</body>
+</html>
+<!-- vim: set ts=2 sw=2 et: -->

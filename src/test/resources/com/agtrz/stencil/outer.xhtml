@@ -1,0 +1,16 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns:s="flag://stencil.agtrz.com/snippits"
+s:snippit="outer"
+xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title><s:invoke snippit="title"/></title>
+</head>
+<body>
+  <s:each name="betty">
+    <s:invoke snippit="lastNameFirst"/>
+  </s:each>
+  <s:invoke snippit="person"/>
+</body>
+</html>
+<!-- vim: set ts=2 sw=2 et: -->

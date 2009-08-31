@@ -1,0 +1,22 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns:s="flag://stencil.agtrz.com/snippits"
+xmlns:foo="flag://foo.agtrz.com/"
+xmlns:var="flag://stencil.agtrz.com/attributes" s:snippit="hello"
+xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>Join CHAT!</title>
+</head>
+<body>
+<form method="POST">
+  <s:if test="firstNameError"><p>Please enter your first name.</s:if>
+    First Name: <input type="text" name="firstName" var:firstName="value"/><br/>
+  <s:if test="lastNameError"><p>Please enter your last name.</s:if>
+    Last Name: <input type="text" name="lastName" var:lastName="value"/><br/>
+  <s:if test="emailError"><p>Please enter your email.</s:if>
+    Email: <input type="text" name="email" var:email="value"/><br/>
+    <input type="submit" name="Join" value="Join"/>
+</form>
+</body>
+</html>
+<!-- vim: set ts=2 sw=2 et: -->
