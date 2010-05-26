@@ -1,4 +1,4 @@
-package com.agtrz.stencil;
+package com.goodworkalan.stencil;
 
 import java.net.MalformedURLException;
 import java.net.URI;

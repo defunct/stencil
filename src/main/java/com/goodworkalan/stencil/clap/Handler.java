@@ -1,4 +1,4 @@
-package com.agtrz.stencil.clap;
+package com.goodworkalan.stencil.clap;
 
 import java.io.IOException;
 import java.net.URL;

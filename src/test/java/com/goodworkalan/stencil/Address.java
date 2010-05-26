@@ -1,5 +1,5 @@
 /* Copyright Alan Gutierrez 2006 */
-package com.agtrz.stencil;
+package com.goodworkalan.stencil;
 
 public class Address
 {

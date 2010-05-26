@@ -1,5 +1,5 @@
 /* Copyright Alan Gutierrez 2006 */
-package com.agtrz.stencil;
+package com.goodworkalan.stencil;
 
 import java.beans.IntrospectionException;
 import java.io.IOException;
@@ -25,6 +25,8 @@ import org.custommonkey.xmlunit.XMLUnit;
 import org.testng.annotations.Test;
 import org.xml.sax.SAXException;
 
+import com.goodworkalan.stencil.Stencil;
+import com.goodworkalan.stencil.StencilDocumentBuilderFactory;
 import com.habitsoft.xhtml.dtds.FailingEntityResolver;
 import com.habitsoft.xhtml.dtds.XhtmlEntityResolver;
 

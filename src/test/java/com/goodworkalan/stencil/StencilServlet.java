@@ -1,5 +1,5 @@
 /* Copyright Alan Gutierrez 2006 */
-package com.agtrz.stencil;
+package com.goodworkalan.stencil;
 
 import java.io.IOException;
 import java.util.Map;
@@ -13,7 +13,7 @@ import nu.xom.ParsingException;
 import nu.xom.Serializer;
 import nu.xom.ValidityException;
 
-import com.agtrz.stencil.Stencil;
+import com.goodworkalan.stencil.Stencil;
 
 /** @fixme I belong in a different test directory, not junit. */
 public class StencilServlet

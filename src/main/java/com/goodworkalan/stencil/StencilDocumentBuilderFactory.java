@@ -1,4 +1,4 @@
-package com.agtrz.stencil;
+package com.goodworkalan.stencil;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.ParserConfigurationException;
