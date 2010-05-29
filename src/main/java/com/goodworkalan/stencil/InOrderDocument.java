@@ -2,7 +2,6 @@ package com.goodworkalan.stencil;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;

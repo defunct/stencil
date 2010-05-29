@@ -6,6 +6,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -35,8 +36,6 @@ import com.goodworkalan.reflective.getter.Getters;
 public class StencilFactory {
     /** The Stencil name space URI. */
     public final static String STENCIL_URI = "http://stencil.goodworkalan:2010/stencil";
-
-    private final static String XMLNS = "xmlns";
     
     /** The base URI from which resource URIs are resolved. */
     private URI baseURI;
@@ -134,31 +133,25 @@ public class StencilFactory {
         return compile(uri, nodes, 0, new Page(nodes), output);
     }
 
-    private Page compile(URI uri, List<Object> nodes, int offset, Page page, ContentHandler output) throws SAXException {
-        // Stack of state based on document element depth.
-        LinkedList<Level> stack = new LinkedList<Level>();
-        
-        // Add a bogus top element to forgo empty stack tests.
-        stack.addLast(new Level());
-        stack.getLast().hasElement = true;
-        
-        if (output != null) {
-            output.startDocument();
-        }
-
-        for (int index = offset, stop = nodes.size(); index < stop; index++) {
+    private <T> void foo(LinkedList<Level> stack, URI uri, List<Object> nodes, int offset, Page page, ContentHandler output) throws SAXException {
+        for (int index = offset, stop = nodes.size(), height = stack.size(); index < stop; index++) {
             Object object = nodes.get(index);
             if (object instanceof String[]) {
-                String[] mapping = (String[]) object;
-                if (stack.getLast().hasElement) {
-                    stack.addLast(new Level());
+                if (!stack.getLast().skip) {
+                    String[] mapping = (String[]) object;
+                    if (stack.getLast().hasElement) {
+                        stack.addLast(new Level());
+                    }
+                    stack.getLast().namespaceURIs.put(mapping[0], mapping[1]);
+                    stack.getLast().prefixes.put(mapping[1], mapping[0]);
+                    output.startPrefixMapping(mapping[0], mapping[1]);
                 }
-                stack.getLast().namespaceURIs.put(mapping[0], mapping[1]);
-                stack.getLast().prefixes.put(mapping[1], mapping[0]);
-                output.startPrefixMapping(mapping[0], mapping[1]);
             } else if (object instanceof Element) {
                 Element element = (Element) object;
                 if (!element.start) {
+                    if (height == stack.size()) {
+                        break;
+                    }
                     if (output != null && !stack.getLast().skip) {
                         output.endElement(element.namespaceURI, element.localName, getQualifiedName(stack, element.namespaceURI, element.localName));
                     }
@@ -172,6 +165,7 @@ public class StencilFactory {
                     boolean skip = stack.getLast().skip;
                     stack.addLast(new Level());
                     stack.getLast().skip = skip;
+                    stack.getLast().hasElement = skip;
                 }
                 if (stack.getLast().skip) {
                     continue;
@@ -245,11 +239,38 @@ public class StencilFactory {
                         if (isBlank(name)) {
                             throw new StencilException("Missing var name attribute at line [%s] of [%s].", element.line, uri);
                         }
-                        String value = get(contextType, name, getSelected(stack), element.line, uri);
+                        String value = getString(contextType, name, getSelected(stack), element.line, uri);
                         if (output != null) {
                             stack.getLast().skip = true;
                             output.characters(value.toCharArray(), 0, value.length());
                         }
+                    } else if (localName.equals("each")) {
+                        String path = resolved.getValue(resolved.getIndex("path"));
+                        if (isBlank(path)) {
+                            throw new StencilException("Missing path attribute for each at line [%s] of [%s].", element.line, uri);
+                        }
+                        Ilk.Box value = get(contextType, path, getSelected(stack), element.line, uri);
+                        if (!Collection.class.isAssignableFrom(Types.getRawClass(value.key.type))) {
+                            throw new StencilException("Missing path attribute for each at line [%s] of [%s].", element.line, uri);
+                        }
+                        Actualizer<T> actualizer = new Actualizer<T>(value.key.get(0).type);
+                        if (output == null) {
+                            stack.addLast(new Level());
+                            stack.getLast().hasElement = true;
+                            stack.getLast().context = actualizer.actual().box();
+                            foo(stack, uri, nodes, index + 1, page, output);
+                            stack.removeLast();
+                        } else {
+                            for (T item : actualizer.collection(value)) {
+                                stack.addLast(new Level());
+                                stack.getLast().hasElement = true;
+                                stack.getLast().context = actualizer.actual().box();
+                                stack.getLast().selected = actualizer.actual().box(item);
+                                foo(stack, uri, nodes, index + 1, page, output);
+                                stack.removeLast();
+                            }
+                        }
+                        stack.getLast().skip = true;
                     }
                 }
                 resolved = getAttributes(stack, resolved, contextType, getSelected(stack), element.line, uri);
@@ -263,7 +284,22 @@ public class StencilFactory {
                 }
             }
         }
+ 
+    }
+    private Page compile(URI uri, List<Object> nodes, int offset, Page page, ContentHandler output) throws SAXException {
+        // Stack of state based on document element depth.
+        LinkedList<Level> stack = new LinkedList<Level>();
         
+        // Add a bogus top element to forgo empty stack tests.
+        stack.addLast(new Level());
+        stack.getLast().hasElement = true;
+        
+        if (output != null) {
+            output.startDocument();
+        }
+        
+        foo(stack, uri, nodes, offset, page, output);
+       
         if (output != null) {
             output.endDocument();
         }
@@ -293,7 +329,7 @@ public class StencilFactory {
     public static AttributesImpl getAttributes(LinkedList<Level> stack, AttributesImpl resolved, Type actual, Object object, int line, URI uri) {
         for (int j = 0, stop = resolved.getLength(); j < stop; j++) {
             if (resolved.getURI(j).equals(STENCIL_URI)) {
-                Object value = get(actual, resolved.getLocalName(j), object, line, uri);
+                String value = getString(actual, resolved.getLocalName(j), object, line, uri);
                 if (object != null) {
                     String[] name = resolved.getValue(j).split(":");
                     if (name.length == 2) {
@@ -310,7 +346,12 @@ public class StencilFactory {
         return resolved;
     }
 
-    private static String get(Type actual, String expression, Object object, int line, URI uri) {
+    private static String getString(Type actual, String expression, Object object, int line, URI uri) {
+        Ilk.Box box = get(actual, expression, object, line, uri);
+        return box == null ? null : diffuser.diffuse(box.object).toString();
+    }
+    
+    private static <T> Ilk.Box get(Type actual, String expression, Object object, int line, URI uri) {
         Path path;
         try {
             path = new Path(expression, false);
@@ -332,8 +373,37 @@ public class StencilFactory {
                     throw new StencilException(e, "Cannot evaluate [%s] at line [%d] of [%s].", expression, line, uri);
                 }
             }
-            type = Types.getActualType(getter.getType(), type);
+            type = Types.getActualType(getter.getGenericType(), type);
         }
-        return object == null ? null : diffuser.diffuse(object).toString();
+        if (object == null) {
+            return null;
+        }
+        return enbox(object, type);
+    }
+    
+    private static <T> Ilk.Box enbox(T object, Type type) {
+        return new Ilk<T>(){}.assign(new Ilk<T>(){}, type).box(object);
+    }
+    
+    private static class Actualizer<T> {
+        private Ilk<T> ilk;
+        private final Type type;
+
+        public Actualizer(Type type) {
+            this.ilk = new Ilk<T>(){};
+            this.type = type;
+        }
+        
+        public Ilk<T> actual() {
+            return ilk.assign(ilk, type);
+        }
+        
+        public Collection<T> collection(Ilk.Box box) {
+            return box.cast(new Ilk<Collection<T>>(){}.assign(ilk, type));
+        }
+    }
+    
+    private static <T> Ilk<T> ilk(Type type) {
+        return new Actualizer<T>(type).actual();
     }
 }

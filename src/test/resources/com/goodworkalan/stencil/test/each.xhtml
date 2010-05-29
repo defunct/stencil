@@ -1,0 +1,23 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns:s="http://stencil.goodworkalan:2010/stencil"
+          s:context="com.goodworkalan.stencil.Clique"
+            xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>Hello, World!</title>
+</head>
+<body>
+  <table>
+    <tr>
+      <td>First Name</td>
+      <td>Last Name</td>
+    </tr>
+    <s:each path="people">
+      <tr>
+        <td><s:var name="firstName">Steve</s:var></td>
+        <td><s:var name="lastName">McQueen</s:var></td>
+      </tr>
+    </s:each>
+  </table>
+</body>
+</html>
+<!-- vim: set ts=2 sw=2 et: -->
