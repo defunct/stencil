@@ -11,7 +11,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
-import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
@@ -23,12 +22,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.xerces.parsers.SAXParser;
-import org.xml.sax.SAXNotRecognizedException;
-import org.xml.sax.SAXNotSupportedException;
-
-import com.habitsoft.xhtml.dtds.XhtmlEntityResolver;
-
 import nu.xom.Attribute;
 import nu.xom.Builder;
 import nu.xom.Document;
@@ -39,6 +32,10 @@ import nu.xom.ParentNode;
 import nu.xom.ParsingException;
 import nu.xom.Text;
 import nu.xom.ValidityException;
+
+import org.apache.xerces.parsers.SAXParser;
+
+import com.habitsoft.xhtml.dtds.XhtmlEntityResolver;
 
 public class Stencil
 {

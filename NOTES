@@ -1,0 +1,69 @@
+Wed May 26 09:12:19 CDT 2010
+
+    There are a lot of things to dislike about the W3C DOM. It was designed by
+    committe, by committe members with competing interests, and it needed to be
+    a cross-langauge specification, so no method overloading. It is burdened
+    with an event mechanism needed for its application in web browsers.
+
+    Best of all, it is not thread-safe. Not in any way. Not only is it not
+    thread-safe for a given object in the W3C DOM, you can't count on read-only
+    operations to be thread safe. You can't even count on copies of nodes to be
+    thread safe. Not only is nothing garunteed, the W3C DOM is full of
+    side-effects, so you can always assume the worst.
+
+    Some implementations of the DOM will be lazily initiailzed, so that will
+    create new states. If you alter the DOM, events will be generated and
+    dispatched.
+    
+    If you think that you'll be safe if you clone a DOM document, you still have
+    the <code>UserDataHandler</code> instances that may have been attached to
+    the original DOM document, and they are probably not thread-safe.
+
+    When it comes down to it, you can't even assume that a wholey newly
+    constructed document returned fresh from the parser is not in some way bound
+    to every other document because the implementors decided to make a point
+    about the garuntee that was not offered.
+
+    What it comes down to is that if you are going to use the W3C DOM in an
+    application that is multi-threaded, then you are going to have to know your
+    implementation. You can't get around having to know *something* about your
+    implementation, unless your thread-safe strategy it to have a semaphore
+    somewhere in your code that synchronizes any operation on any W3C DOM object
+    anywhere in your application.
+
+    How to solve this problem.
+
+     * Depend upon the undocumented behavior of a particular W3C DOM.
+     * Use an alternative DOM.
+     * Write a minimal DOM.
+
+    Should we write a minimal DOM, where is what we will need when we get a
+    document back from the parser.
+
+     * Document node with a root element.
+     * Element nodes with attributes, namespace URI and local name.
+     * Attribute notes with CDATA value, namespace URI and local name.
+     * Text nodes with text data.
+     * Base node class with a node type flag, first child, next child, parent,
+       insert child and remove child.
+
+    That is all.
+    
+    Which is why adding an alternative DOM would be painful. Their default JAR
+    will be full of processing instruction nodes, alernate iteration methods,
+    XPath, XInclude, and so on. The smallest one I could find started at 421K.
+
+    There is a DOM installed however, but it is not thread-safe. There is no
+    garuntee that the DOM is thread-safe, that is, so you cannot count on it
+    being thread-safe unless you choose a thread-safe implementation. The
+    default implenetation is not thread-safe.
+
+    If you use the model, you must synchronize the model yourself. From the
+    [Xercex FAQ](http://xerces.apache.org/xerces2-j/faq-dom.html#faq-1).
+
+    And here's my favorite part, it is not that a particular *document* is not
+    thread safe, it is that the *model* itself is not thread-safe.
+    
+    I feel sorry for people who try to understand.
+
+    http://www.velocityreviews.com/forums/t136360-dom-classes-and-thread-safety.html
