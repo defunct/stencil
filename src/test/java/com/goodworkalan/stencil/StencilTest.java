@@ -12,10 +12,8 @@ import java.io.Reader;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -58,24 +56,8 @@ public class StencilTest extends XMLTestCase {
         XMLUnit.setControlParser(StencilDocumentBuilderFactory.class.getCanonicalName());
         XMLUnit.setTestParser(StencilDocumentBuilderFactory.class.getCanonicalName());
 
-        URL url = Thread.currentThread().getContextClassLoader().getResource("org/jaxen/BaseXPath.class");
-        
-        System.out.println(url);
-        
-        new XhtmlEntityResolver(new FailingEntityResolver());
-        
-        Stencil.Template template = new Stencil.Template(getClass().getResourceAsStream("var.xhtml"));
-        Stencil.Snippit snippit = template.newSnippit("hello");
         final Person person = new Person("Steve", "McQueen");
 
-        snippit.bind(person);
-
-        // new Serializer(System.out).write(snippit.getDocument());
-
-        Builder builder = new Builder();
-        Document control = builder.build(getClass().getResourceAsStream("var.out.xhtml"));
-        assertXMLEqual(control.toXML(), snippit.getDocument().toXML());
-        
         StencilFactory stencils = new StencilFactory();
         
         InjectorBuilder newInjector = new InjectorBuilder();
