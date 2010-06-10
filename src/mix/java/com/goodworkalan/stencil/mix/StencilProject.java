@@ -3,7 +3,7 @@ package com.goodworkalan.stencil.mix;
 import com.goodworkalan.go.go.library.Artifact;
 import com.goodworkalan.mix.ProjectModule;
 import com.goodworkalan.mix.builder.Builder;
-import com.goodworkalan.mix.builder.JavaProject;
+import com.goodworkalan.mix.cookbook.JavaProject;
 
 /**
  * Builds the project definition for Stencil.
