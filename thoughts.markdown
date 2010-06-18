@@ -1,12 +1,14 @@
 ---
 layout: default
+title: Toughts, Concerns and Decisions regarding Stencil
 ---
 
-Thoughts on Stencil
-===================
+# Thoughts on Stencil
 
  * Wondering if it wouldn't be nice to have a way to provide template to users,
    with a very simple markup language, around naked objects. Can Freemarker
    limit itself to use only specific classes that you specify?
 
    See: http://www.liquidmarkup.org/
+
+It works, now with the basic utilities envisioned in the initial project.

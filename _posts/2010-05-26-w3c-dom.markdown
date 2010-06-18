@@ -1,0 +1,193 @@
+---
+layout: default
+title: W3C DOM
+---
+
+Stencil documents are processed in order. This makes them a candidate for
+streaming, but I don't like the idea of running XML parser any more often
+than I must, so it is time to choose a DOM.
+
+The DOM needs only to provide a means to traverse the document in order,
+inspect element names and attributes, and perform minor node surgury.
+Therefore, I'm not at all particular about convience methods, XPath,
+XInclude, the Java-ness of the DOM, constructors versus facotry methods. Any
+old DOM will do. Java comes with any old DOM, the W3C DOM produced by JAXP.
+
+Stencil is designed for use in a Servlet container, so we need a DOM that
+provides a strategy for thread-safety.
+
+We have three choices.
+
+ * Depend upon the undocumented behavior of a the W3C DOM that comes with
+   Sun's JDK.
+ * Use an alternative DOM.
+ * Write a minimal DOM.
+
+The first choice listed above is indeed my first choice, since the API has
+all I need and the footprint of Stencil would be small.
+
+You might be wondering about my first choice. Why must I choose to depend on
+undocumented behvavior? Why can't you simply use the W3C DOM API as
+documented?
+
+Because, the W3C DOM makes no provision for use in a multi-threaded
+enviornment, and the implementation that comes with aggressively adheres to
+the waved requirement for thread-safety. If you do use W3C DOM in your
+mutli-threaded application, it is because you've come to expect certain
+behavior from the default implmentation, but that behavior is pointedly
+undocumented.
+
+There are a lot of things to dislike about the W3C DOM. It was designed by a
+committe members with competing interests. It needed to be a cross-langauge
+specification, so no method overloading. It is burdened with an event
+mechanism needed for its application in web browsers, that has little use
+for day-to-day XML munging. Also...
+
+The W3C DOM is not required to be thread-safe.
+
+That could be the least of its problems, but implementors of the W3C DOM API
+for Java have taken that to heart and produced an implementation that
+addresses thread safety by saying...
+
+The W3C DOM is not required to be thread-safe.
+
+Here is an example of the implementation documentation for the Xerces
+
+From the [Xercex FAQ](http://xerces.apache.org/xerces2-j/faq-dom.html#faq-1).
+
+> DOM does not require implementations to be thread safe. If you need to
+> access the DOM from multiple threads, you are required to add the
+> appropriate locks to your application code. 
+
+Did you get that?
+
+It is not that a particular *document* is not thread safe, it is that the
+*model* itself is not thread-safe. Thus endith the concurrency documentation
+for the Xerces implementation of the W3C DOM.
+
+What does thread-safe even mean? This is non-answer to the question of how
+to use W3C DOM in a concurrent application. A Java tutorial will show you an
+<code>Account</code> class with a <code>setValue</code> method, and a
+<code>ThreadSafeAccount</code> class whose <code>setValue</code> method is
+<code>synchronized</code>. The latter object is a thread-safe object for the
+purposes of our beginning Java programmer course.
+
+Indeed, it makes no sense to add <code>synchrnization</code> to the getter
+and setter methods of a particular <code>Node</code> synchrnoized methods,
+since any node operation is going to involve at least two nodes. But, that
+doesn't mean that you can simply "add the appropriate locks to your application
+code" without any knowledge of the implementation.
+
+What are we to take from this answer to a frequenlty asked question? What
+can we take from this but the assumption that the W3C DOM must be treated
+like a single-threaded library that makes no provisions for use in a
+multi-threaded environment?
+
+This unanswered question from a Java forum from 2004 is the right question
+for us to ask.
+
+http://www.velocityreviews.com/forums/t136360-dom-classes-and-thread-safety.html
+
+A good question, the right question, but no answer.
+
+If you read the JDOM documentation, you will get more guidance on usage in
+thread-safe applications.
+
+http://www.jdom.org/docs/faq.html#a0170
+
+Here JDOM says that, while it is not *thread-safe* in the Java tutorial
+sense of the term, it is intended for use in a mutli-threaded environment if
+you use it read-only, make copies before writing, or synchronize on the
+document.
+
+Maybe you can use your common sense to "add the appropriate locks to your
+application code" for a W3C DOM document.
+
+The default <code>ArrayList</code> is not thread-safe, but we know that we
+can perform operations on a particular <code>ArrayList</code> in a
+synchronized block, and our program will be thread-safe. Let's make some
+false asumptions and start coding.
+
+We might think that we could manipulate a <code>Document</code> in a
+synchronized block for a particular <code>Document</code>, but that document
+may have a <code>UserDataHandler</code> attached, so unless we know the
+provenance of the <code>Document</code>, we don't know what sort of code
+we're executing.
+
+Gotcha!
+
+We might think that we can clone a <code>Document</code> and that the
+resulting document would be ours to modify in any thread we choose, but a
+deep clone of a document will also copy any <code>UserDataHandler</code>
+instances attacthed to the document.
+
+Gotcha!
+
+Of course, we can stay in control of our <code>Document</code> instances,
+use only <code>Document</code> instances we create that have no
+<code>UserDataHandler</code> attached, forgo the event mechanism and user
+data, just use the <code>Document</code> as a tree structure. That gets rid
+of the side effects, and if thats not enough, maybe we can make a use W3C
+DOM as a read-only XML API.
+
+Guess what? there's a demand constructed DOM implementation in Xerces as
+well.
+
+Gotcha!
+
+You can navigate all these gotchas, so long as you know something about the
+W3C DOM implementaiton you employ.
+
+Depending on implementation details is a no-no for the program-to-interfaces
+fetishists who split everything into an interface and implementation, in an
+attempt at future-proofing. W3C DOM, if nothing else, is a perfect example
+of how impracticable that fetish is when taken to its extreme.
+
+If we don't have this hang up, if we're comfortable with programming through
+the interfaces to an implementation we have chosen to meet our requirements, 
+we are now going to face the fact that we are dealing with a W3C DOM
+implmenetors take an aggressive approach to the waved requirement of
+thread-safety. We not only need to depend on implementation details, but
+undocumented ones at that. We need to know how Xerces works, by reading the
+code, and we need to accept that the implementors are happy to pusish us for
+making any assumptions about what is behind the W3C DOM API.
+
+If you are not willing to make your code dependent on undocumented
+implementation details, the only way to use the W3C DOM API in a thread-safe
+mannor is to only use it a single thread in your application and ensure that
+no other thread uses the API, or else have a single synchrnoization monitor
+that synchronizes every use of the W3C DOM anywhere in your application.
+There is no way to "add the appropriate locks to your application
+code", with pural "locks". You can only add the one appropriate lock, the
+lock that synchrnoizes all use of the W3C DOM API.
+
+If this sounds outragous, it is not. It is really the proscribed method for
+dealing with any library that was written for a single-threaded enviornment.
+It's how C programmers deal with older C libraries, you have to lock before
+you call any funciton in the library, because it may use a global variable.
+
+If a *class* is not thread-safe, you can guard the class. If a *library* is
+not thread-safe, you have to guard the entire library.
+
+http://www.velocityreviews.com/forums/t136360-dom-classes-and-thread-safety.html
+
+If you read the responses to a thread about this question on the Xerces
+mailing list, the solutions offered are either to use plug-in another DOM
+that addresses thread-safety, or else some thoughts on the implementation
+details of Xerces and whether the Xerces implementation meets those needs,
+with the caveat that the implementation is subject to change.
+
+It's not as if the world is teaming with implementations of the W3C DOM,
+and once you've pulled in a new implmentation you may as well pull in a new
+interface like XOM or JDOM.
+
+Thus, you're looking at the implementation details. Those implementation
+details are libable to change.
+
+A W3C DOM implementation could easily follow the JDOM guildlines for
+documents that do not employ events or user data, providing a single
+document consisting of a set of unsynchrnoized objects that belong only to
+the owner document for use in a single thread of execution.
+
+
+vim: set textwidth=76:
