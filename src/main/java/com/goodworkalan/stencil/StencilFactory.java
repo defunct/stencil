@@ -298,7 +298,7 @@ public class StencilFactory {
                             }
                         }
                         stack.getLast().skip = true;
-                    } else if (localName.equals("if")) {
+                    } else if (localName.equals("if") || localName.equals("unless")) {
                         String path = resolved.getValue(resolved.getIndex("path"));
                         if (isBlank(path)) {
                             throw new StencilException("Missing path attribute for if at line [%d] of [%s]", element.line, uri);
@@ -319,6 +319,9 @@ public class StencilFactory {
                                 condition = true;
                             }
                         }
+                        if (localName.equals("unless")) {
+                        	condition = !condition;
+                        }
                         if (condition) {
                             stack.addLast(new Level());
                             stack.getLast().hasElement = true;
@@ -329,6 +332,15 @@ public class StencilFactory {
                         		level.skip = true;
                         	}
                         }
+                    } else if (localName.equals("default")) {
+                        stack.addLast(new Level());
+                        stack.getLast().hasElement = true;
+                        foo(stack, uri, nodes, index + 1, page, output, lexical, dtd);
+                        stack.removeLast();
+                    	Level level = stack.get(stack.size() - 2);
+                    	if (level.choose) {
+                    		level.skip = true;
+                    	}
                     } else if (localName.equals("choose")) {
                     	stack.getLast().choose = true;
                     	stack.getLast().skip = false;

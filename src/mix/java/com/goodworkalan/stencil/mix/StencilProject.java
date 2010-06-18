@@ -35,7 +35,7 @@ public class StencilProject implements ProjectModule {
                     .development("org.slf4j/slf4j-log4j12/1.4.2")
                     .development("log4j/log4j/1.2.14")
                     .development("xmlunit/xmlunit/1.2")
-                    .development("org.testng/testng/5.10")
+                    .development("org.testng/testng-jdk15/5.10")
                     .development("org.mockito/mockito-core/1.6")
                     .end()
                 .end()
