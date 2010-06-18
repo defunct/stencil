@@ -179,9 +179,8 @@ public class StencilTest extends XMLTestCase {
         assertXMLEqual(control1, actual);
     }
 
-    @Test
     private Document getControl(String file) throws ParsingException, ValidityException,
-            IOException {
+    IOException {
         SAXParser parser = new SAXParser();
         parser.setEntityResolver(new XhtmlEntityResolver());          
         Builder builder = new Builder(parser, false);
@@ -191,23 +190,28 @@ public class StencilTest extends XMLTestCase {
 
     @Test
     public void testUnless()
-    throws ValidityException, ParsingException, IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException {
-        XMLUnit.setControlParser(StencilDocumentBuilderFactory.class.getCanonicalName());
-        XMLUnit.setTestParser(StencilDocumentBuilderFactory.class.getCanonicalName());
-
-        Stencil.Template template = new Stencil.Template(getClass().getResourceAsStream("unless.xhtml"));
-        Stencil.Snippit snippit = template.newSnippit("hello");
-
-        Map mapOfBindings = new HashMap();
-
-        mapOfBindings.put("barney", new Person("Betty", "Rubble"));
-
-        snippit.bind(mapOfBindings);
-
-        // new Serializer(System.out).write(snippit.getDocument());
-
-        Document control = getControl("unless.out.xhtml");
-//        assertXMLEqual(control.toXML(), snippit.getDocument().toXML());
+    throws ValidityException, ParsingException, IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException, TransformerFactoryConfigurationError {
+    	XMLUnit.setControlParser(StencilDocumentBuilderFactory.class.getCanonicalName());
+    	XMLUnit.setTestParser(StencilDocumentBuilderFactory.class.getCanonicalName());
+	
+    	InjectorBuilder newInjector = new InjectorBuilder();
+    	newInjector.module(new InjectorBuilder() {
+    		protected void build() {
+    			instance(new Person(null, null), ilk(Person.class), null);
+    		}
+    	});
+    
+    	StencilFactory stencils = new StencilFactory();
+        Injector injector = newInjector.newInjector();
+        stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil/test").getAbsoluteFile().toURI());
+        stencils.setInjector(injector);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        StreamResult stream = new StreamResult(out);
+        TransformerHandler handler = foo(stream);
+        stencils.stencil(URI.create("unless.xhtml"), handler);
+        String control1 = slurp(getClass().getResourceAsStream("test/unless.out.xhtml"));
+        String actual = slurp(new ByteArrayInputStream(out.toByteArray()));
+        assertXMLEqual(control1, actual);
     }
 
     @Test
