@@ -8,21 +8,28 @@ import java.util.List;
 
 import org.xml.sax.Attributes;
 import org.xml.sax.ContentHandler;
+import org.xml.sax.DTDHandler;
 import org.xml.sax.InputSource;
 import org.xml.sax.Locator;
 import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
+import org.xml.sax.ext.LexicalHandler;
 import org.xml.sax.helpers.AttributesImpl;
 import org.xml.sax.helpers.XMLReaderFactory;
 
 import com.habitsoft.xhtml.dtds.XhtmlEntityResolver;
 
-class InOrderDocument implements ContentHandler {
+class InOrderDocument implements ContentHandler, DTDHandler, LexicalHandler {
+	boolean inDTD;
+	
     public static List<Object> readInOrderDocument(InputStream in) throws IOException, SAXException {
         List<Object> nodes = new ArrayList<Object>();
         XMLReader reader = XMLReaderFactory.createXMLReader();
-        reader.setEntityResolver(new XhtmlEntityResolver());          
-        reader.setContentHandler(new InOrderDocument(nodes));
+        reader.setEntityResolver(new XhtmlEntityResolver());     
+        InOrderDocument iod = new InOrderDocument(nodes);
+        reader.setContentHandler(iod);
+        reader.setDTDHandler(iod);
+        reader.setProperty("http://xml.org/sax/properties/lexical-handler", iod);
         reader.parse(new InputSource(in));
         return nodes;
     }
@@ -94,5 +101,47 @@ class InOrderDocument implements ContentHandler {
     
     public void endDocument() throws SAXException {
         flushCharacters();
+    }
+    
+    // DTDHandler
+    public void notationDecl(String name, String publicId, String systemId)
+    throws SAXException {
+//    	nodes.add(new NotationDeclaration(name, publicId, systemId));
+    }
+
+    public void unparsedEntityDecl(String name, String publicId, String systemId, String notationName) throws SAXException {
+    }
+    
+    public void startDTD(String name, String publicId, String systemId)
+    throws SAXException {
+    	nodes.add(new DocumentTypeDefinition(true, name, publicId, systemId));
+    	inDTD = true;
+    }
+    
+    public void startCDATA() throws SAXException {
+    	// TODO Auto-generated method stub
+    	
+    }
+    
+    public void endCDATA() throws SAXException {
+    	// TODO Auto-generated method stub
+    	
+    }
+    
+    public void endDTD() throws SAXException {
+    	nodes.add(new DocumentTypeDefinition(false, null, null, null));
+    	inDTD = false;
+    }
+    
+    public void startEntity(String name) throws SAXException {
+    }
+    
+    public void endEntity(String name) throws SAXException {
+    }
+    
+    public void comment(char[] ch, int start, int length) throws SAXException {
+    	if (!inDTD) {
+    		nodes.add(new Comment(new String(ch, start, length)));
+    	}
     }
 }

@@ -10,6 +10,7 @@ public class Level {
     public Map<String, String> prefixes = new HashMap<String, String>();
     public boolean hasElement;
     public boolean skip;
+    public boolean choose;
     public Ilk.Box context;
     public Ilk.Box selected;
 }

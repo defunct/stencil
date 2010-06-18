@@ -11,7 +11,6 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
-import java.net.URL;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,6 +20,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.Result;
 import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.TransformerFactoryConfigurationError;
 import javax.xml.transform.sax.SAXTransformerFactory;
 import javax.xml.transform.sax.TransformerHandler;
@@ -29,7 +29,6 @@ import javax.xml.transform.stream.StreamResult;
 import nu.xom.Builder;
 import nu.xom.Document;
 import nu.xom.ParsingException;
-import nu.xom.Serializer;
 import nu.xom.ValidityException;
 
 import org.apache.xerces.parsers.SAXParser;
@@ -38,14 +37,14 @@ import org.custommonkey.xmlunit.XMLUnit;
 import org.testng.annotations.Test;
 import org.xml.sax.SAXException;
 
+import com.goodworkalan.ilk.Ilk;
 import com.goodworkalan.ilk.inject.Injector;
 import com.goodworkalan.ilk.inject.InjectorBuilder;
-import com.habitsoft.xhtml.dtds.FailingEntityResolver;
 import com.habitsoft.xhtml.dtds.XhtmlEntityResolver;
 
 public class StencilTest extends XMLTestCase {
     public TransformerHandler foo(Result result) throws TransformerConfigurationException, TransformerFactoryConfigurationError {
-        TransformerHandler handler = ((SAXTransformerFactory) SAXTransformerFactory.newInstance()).newTransformerHandler();
+        TransformerHandler handler = ((SAXTransformerFactory) TransformerFactory.newInstance()).newTransformerHandler();
         handler.setResult(result);
         return handler;
     }
@@ -94,7 +93,6 @@ public class StencilTest extends XMLTestCase {
         DocumentBuilder db = dbf.newDocumentBuilder();
         return db.parse(in, uri);
     }
-    
 
     @Test
     public void testEach() throws ValidityException, ParsingException, IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException, TransformerFactoryConfigurationError {
@@ -129,8 +127,36 @@ public class StencilTest extends XMLTestCase {
     }
 
     @Test
-    public void testDefault() throws ValidityException, ParsingException, IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException
-    {
+    public void testIf()
+    throws ValidityException, ParsingException, IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException, TransformerFactoryConfigurationError {
+    	XMLUnit.setControlParser(StencilDocumentBuilderFactory.class.getCanonicalName());
+    	XMLUnit.setTestParser(StencilDocumentBuilderFactory.class.getCanonicalName());
+	
+    	final Map<String, Person> people = new HashMap<String, Person>();
+    	people.put("second", new Person("George", "Washington"));
+    	InjectorBuilder newInjector = new InjectorBuilder();
+    	newInjector.module(new InjectorBuilder() {
+    		protected void build() {
+    			instance(people, new Ilk<Map<String, Person>>() {}, null);
+    		}
+    	});
+    
+    	StencilFactory stencils = new StencilFactory();
+        Injector injector = newInjector.newInjector();
+        stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil/test").getAbsoluteFile().toURI());
+        stencils.setInjector(injector);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        StreamResult stream = new StreamResult(out);
+        TransformerHandler handler = foo(stream);
+        stencils.stencil(URI.create("if.xhtml"), handler);
+        String control1 = slurp(getClass().getResourceAsStream("test/if.out.xhtml"));
+        String actual = slurp(new ByteArrayInputStream(out.toByteArray()));
+        assertXMLEqual(control1, actual);
+    }
+
+	@Test
+    public void testDefault()
+	throws ValidityException, ParsingException, IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException {
         XMLUnit.setControlParser(StencilDocumentBuilderFactory.class.getCanonicalName());
         XMLUnit.setTestParser(StencilDocumentBuilderFactory.class.getCanonicalName());
 
@@ -142,27 +168,6 @@ public class StencilTest extends XMLTestCase {
         // new Serializer(System.out).write(snippit.getDocument());
 
         Document control = getControl("default.out.xhtml");
-//        assertXMLEqual(control.toXML(), snippit.getDocument().toXML());
-    }
-
-    @Test
-    public void testIf() throws ValidityException, ParsingException, IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException
-    {
-        XMLUnit.setControlParser(StencilDocumentBuilderFactory.class.getCanonicalName());
-        XMLUnit.setTestParser(StencilDocumentBuilderFactory.class.getCanonicalName());
-
-        Stencil.Template template = new Stencil.Template(getClass().getResourceAsStream("if.xhtml"));
-        Stencil.Snippit snippit = template.newSnippit("hello");
-
-        Map mapOfBindings = new HashMap();
-
-        mapOfBindings.put("barney", new Person("Betty", "Rubble"));
-
-        snippit.bind(mapOfBindings);
-
-        new Serializer(System.out).write(snippit.getDocument());
-
-        Document control = getControl("if.out.xhtml");
 //        assertXMLEqual(control.toXML(), snippit.getDocument().toXML());
     }
 

@@ -1,33 +1,36 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns:s="http://stencil.goodworkalan:2010/stencil"
-    s:context="java.util.Map<java.lang.String, com.goodworkalan.stencil.Person>"
+    s:context="java.util.Map&lt;java.lang.String, com.goodworkalan.stencil.Person&gt;"
         xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <title>Hello, World!</title>
 </head>
 <body>
-  <s:if test="first">
-    <p>First Name: <s:var name="fred.firstName">Steve</s:var></p>
-    <p>Last Name: <s:var name="fred.lastName">McQueen</s:var></p>
+  <s:if path="first">
+    <p>First Name: <s:var name="first.firstName">Steve</s:var></p>
+    <p>Last Name: <s:var name="first.lastName">McQueen</s:var></p>
   </s:if>
-  <s:if test="second">
-    <p>First Name: <s:var name="barney.firstName">Steve</s:var></p>
-    <p>Last Name: <s:var name="barney.lastName">McQueeen</s:var></p>
+  <s:if path="second">
+    <p>First Name: <s:var name="second.firstName">Steve</s:var></p>
+    <p>Last Name: <s:var name="second.lastName">McQueeen</s:var></p>
   </s:if>
-  <s:switch>
-  <s:if test="second">
-    <p>First Name: <s:var name="barney.firstName">Steve</s:var></p>
-    <p>Last Name: <s:var name="barney.lastName">McQueeen</s:var></p>
+  <s:choose>
+  <s:if path="first">
+    <p>First Name: <s:var name="first.firstName">Steve</s:var></p>
+    <p>Last Name: <s:var name="first.lastName">McQueen</s:var></p>
   </s:if>
-  <s:if test="third">
-    <p>First Name: <s:var name="barney.firstName">Steve</s:var></p>
-    <p>Last Name: <s:var name="barney.lastName">McQueeen</s:var></p>
+  <s:if path="second">
+    <p>First Name: <s:var name="second.firstName">Steve</s:var></p>
+    <p>Last Name: <s:var name="second.lastName">McQueeen</s:var></p>
+  </s:if>
+  <s:if path="third">
+    <p>First Name: <s:var name="third.firstName">Steve</s:var></p>
+    <p>Last Name: <s:var name="third.lastName">McQueeen</s:var></p>
   </s:if>
   <s:default>
     <p>Error.</p>
   </s:default>
-  </s:switch>
+  </s:choose>
 </body>
 </html>
 <!-- vim: set ts=2 sw=2 et: -->
