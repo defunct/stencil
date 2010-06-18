@@ -6,8 +6,12 @@ import java.net.URLConnection;
 import java.net.URLStreamHandler;
 
 /**
- * An implementation of the ClassLoader Access Protocol  
- *
+ * An implementation of the ClassLoader Access Protocol using the default Java
+ * facilities, which are abysmal. See <a
+ * href="http://java.sun.com/developer/onlineTraining/protocolhandlers/">A New
+ * Era for Protocol Handlers</a> for the details, like <strong>the class name
+ * and package is part of the interface</string>.
+ * 
  * @author Alan Gutierrez
  */
 public class Handler extends URLStreamHandler {
