@@ -20,8 +20,8 @@ import org.xml.sax.helpers.XMLReaderFactory;
 import com.habitsoft.xhtml.dtds.XhtmlEntityResolver;
 
 class InOrderDocument implements ContentHandler, DTDHandler, LexicalHandler {
-	boolean inDTD;
-	
+    boolean inDTD;
+    
     public static List<Object> readInOrderDocument(InputStream in) throws IOException, SAXException {
         List<Object> nodes = new ArrayList<Object>();
         XMLReader reader = XMLReaderFactory.createXMLReader();
@@ -106,7 +106,7 @@ class InOrderDocument implements ContentHandler, DTDHandler, LexicalHandler {
     // DTDHandler
     public void notationDecl(String name, String publicId, String systemId)
     throws SAXException {
-//    	nodes.add(new NotationDeclaration(name, publicId, systemId));
+//        nodes.add(new NotationDeclaration(name, publicId, systemId));
     }
 
     public void unparsedEntityDecl(String name, String publicId, String systemId, String notationName) throws SAXException {
@@ -114,23 +114,23 @@ class InOrderDocument implements ContentHandler, DTDHandler, LexicalHandler {
     
     public void startDTD(String name, String publicId, String systemId)
     throws SAXException {
-    	nodes.add(new DocumentTypeDefinition(true, name, publicId, systemId));
-    	inDTD = true;
+        nodes.add(new DocumentTypeDefinition(true, name, publicId, systemId));
+        inDTD = true;
     }
     
     public void startCDATA() throws SAXException {
-    	// TODO Auto-generated method stub
-    	
+        // TODO Auto-generated method stub
+        
     }
     
     public void endCDATA() throws SAXException {
-    	// TODO Auto-generated method stub
-    	
+        // TODO Auto-generated method stub
+        
     }
     
     public void endDTD() throws SAXException {
-    	nodes.add(new DocumentTypeDefinition(false, null, null, null));
-    	inDTD = false;
+        nodes.add(new DocumentTypeDefinition(false, null, null, null));
+        inDTD = false;
     }
     
     public void startEntity(String name) throws SAXException {
@@ -140,8 +140,8 @@ class InOrderDocument implements ContentHandler, DTDHandler, LexicalHandler {
     }
     
     public void comment(char[] ch, int start, int length) throws SAXException {
-    	if (!inDTD) {
-    		nodes.add(new Comment(new String(ch, start, length)));
-    	}
+        if (!inDTD) {
+            nodes.add(new Comment(new String(ch, start, length)));
+        }
     }
 }

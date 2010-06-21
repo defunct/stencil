@@ -38,15 +38,15 @@ import com.goodworkalan.ilk.inject.Injector;
 import com.goodworkalan.ilk.inject.InjectorBuilder;
 
 public class StencilTest extends XMLTestCase {
-	/**
-	 * Create a new transformer handler that records to the given result.
-	 * 
-	 * @param result
-	 *            The result.
-	 * @return A new transformer handler.
-	 * @throws TransformerConfigurationException
-	 *             If for some reason the TransformerHandler cannot be created.
-	 */
+    /**
+     * Create a new transformer handler that records to the given result.
+     * 
+     * @param result
+     *            The result.
+     * @return A new transformer handler.
+     * @throws TransformerConfigurationException
+     *             If for some reason the TransformerHandler cannot be created.
+     */
     public TransformerHandler newTransformerHandler(Result result) throws TransformerConfigurationException, TransformerFactoryConfigurationError {
         TransformerHandler handler = ((SAXTransformerFactory) TransformerFactory.newInstance()).newTransformerHandler();
         handler.setResult(result);
@@ -131,19 +131,19 @@ public class StencilTest extends XMLTestCase {
     @Test
     public void testIf()
     throws ValidityException, ParsingException, IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException, TransformerFactoryConfigurationError {
-    	XMLUnit.setControlParser(StencilDocumentBuilderFactory.class.getCanonicalName());
-    	XMLUnit.setTestParser(StencilDocumentBuilderFactory.class.getCanonicalName());
-	
-    	final Map<String, Person> people = new HashMap<String, Person>();
-    	people.put("second", new Person("George", "Washington"));
-    	InjectorBuilder newInjector = new InjectorBuilder();
-    	newInjector.module(new InjectorBuilder() {
-    		protected void build() {
-    			instance(people, new Ilk<Map<String, Person>>() {}, null);
-    		}
-    	});
+        XMLUnit.setControlParser(StencilDocumentBuilderFactory.class.getCanonicalName());
+        XMLUnit.setTestParser(StencilDocumentBuilderFactory.class.getCanonicalName());
     
-    	StencilFactory stencils = new StencilFactory();
+        final Map<String, Person> people = new HashMap<String, Person>();
+        people.put("second", new Person("George", "Washington"));
+        InjectorBuilder newInjector = new InjectorBuilder();
+        newInjector.module(new InjectorBuilder() {
+            protected void build() {
+                instance(people, new Ilk<Map<String, Person>>() {}, null);
+            }
+        });
+    
+        StencilFactory stencils = new StencilFactory();
         Injector injector = newInjector.newInjector();
         stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil/test").getAbsoluteFile().toURI());
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -155,20 +155,20 @@ public class StencilTest extends XMLTestCase {
         assertXMLEqual(control1, actual);
     }
 
-	@Test
+    @Test
     public void testDefault()
-	throws ValidityException, ParsingException, IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException, TransformerFactoryConfigurationError {
-    	XMLUnit.setControlParser(StencilDocumentBuilderFactory.class.getCanonicalName());
-    	XMLUnit.setTestParser(StencilDocumentBuilderFactory.class.getCanonicalName());
-	
-    	InjectorBuilder newInjector = new InjectorBuilder();
-    	newInjector.module(new InjectorBuilder() {
-    		protected void build() {
-    			instance(new Person(null, null), ilk(Person.class), null);
-    		}
-    	});
+    throws ValidityException, ParsingException, IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException, TransformerFactoryConfigurationError {
+        XMLUnit.setControlParser(StencilDocumentBuilderFactory.class.getCanonicalName());
+        XMLUnit.setTestParser(StencilDocumentBuilderFactory.class.getCanonicalName());
     
-    	StencilFactory stencils = new StencilFactory();
+        InjectorBuilder newInjector = new InjectorBuilder();
+        newInjector.module(new InjectorBuilder() {
+            protected void build() {
+                instance(new Person(null, null), ilk(Person.class), null);
+            }
+        });
+    
+        StencilFactory stencils = new StencilFactory();
         Injector injector = newInjector.newInjector();
         stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil/test").getAbsoluteFile().toURI());
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -183,17 +183,17 @@ public class StencilTest extends XMLTestCase {
     @Test
     public void testUnless()
     throws ValidityException, ParsingException, IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException, TransformerFactoryConfigurationError {
-    	XMLUnit.setControlParser(StencilDocumentBuilderFactory.class.getCanonicalName());
-    	XMLUnit.setTestParser(StencilDocumentBuilderFactory.class.getCanonicalName());
-	
-    	InjectorBuilder newInjector = new InjectorBuilder();
-    	newInjector.module(new InjectorBuilder() {
-    		protected void build() {
-    			instance(new Person(null, null), ilk(Person.class), null);
-    		}
-    	});
+        XMLUnit.setControlParser(StencilDocumentBuilderFactory.class.getCanonicalName());
+        XMLUnit.setTestParser(StencilDocumentBuilderFactory.class.getCanonicalName());
     
-    	StencilFactory stencils = new StencilFactory();
+        InjectorBuilder newInjector = new InjectorBuilder();
+        newInjector.module(new InjectorBuilder() {
+            protected void build() {
+                instance(new Person(null, null), ilk(Person.class), null);
+            }
+        });
+    
+        StencilFactory stencils = new StencilFactory();
         Injector injector = newInjector.newInjector();
         stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil/test").getAbsoluteFile().toURI());
         ByteArrayOutputStream out = new ByteArrayOutputStream();

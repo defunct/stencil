@@ -23,19 +23,19 @@ import com.goodworkalan.stencil.ResourceResolver;
  * @author Alan Gutierrez
  */
 public class Handler extends URLStreamHandler implements ResourceResolver {
-	/**
-	 * Get the clap URL for the given uri.
-	 * 
-	 * @param injector
-	 *            The injector.
-	 * @param uri
-	 *            The URI.
-	 */
-	public URL getURL(Injector injector, URI uri) throws MalformedURLException {
-		return new URL(null, uri.toString(), this);
-	}
+    /**
+     * Get the clap URL for the given uri.
+     * 
+     * @param injector
+     *            The injector.
+     * @param uri
+     *            The URI.
+     */
+    public URL getURL(Injector injector, URI uri) throws MalformedURLException {
+        return new URL(null, uri.toString(), this);
+    }
 
-	// TODO Document.
+    // TODO Document.
     @Override
     public URLConnection openConnection(URL u) throws IOException {
         String host = u.getHost();
@@ -50,7 +50,7 @@ public class Handler extends URLStreamHandler implements ResourceResolver {
         return classLoader.getResource(u.getPath().substring(1)).openConnection();
     }
     
-	// TODO Document.
+    // TODO Document.
     @Override
     public void parseURL(URL u, String spec, int start, int limit) {
         super.parseURL(u, spec, start, limit);

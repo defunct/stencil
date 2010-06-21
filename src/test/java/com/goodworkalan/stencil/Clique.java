@@ -9,6 +9,6 @@ import java.util.List;
  * @author Alan Gutierrez
  */
 public class Clique {
-	/** The list of people. */
+    /** The list of people. */
     public List<Person> people = new ArrayList<Person>();
 }

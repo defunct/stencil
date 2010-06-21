@@ -18,12 +18,12 @@ import com.goodworkalan.stencil.clap.Handler;
  * @author Alan Gutierrez
  */
 public class ClapTest {
-	/** Test the <code>ResourceResolver</code> interface. */
-	@Test
-	public void clap() throws IOException {
-		Handler clap = new Handler();
-		URL url = clap.getURL(null, URI.create("clap://thread/com/goodworkalan/stencil/clap/hello.txt"));
-		BufferedReader reader = new BufferedReader(new InputStreamReader(url.openStream()));
-		assertEquals(reader.readLine(), "Hello, World!");
-	}
+    /** Test the <code>ResourceResolver</code> interface. */
+    @Test
+    public void clap() throws IOException {
+        Handler clap = new Handler();
+        URL url = clap.getURL(null, URI.create("clap://thread/com/goodworkalan/stencil/clap/hello.txt"));
+        BufferedReader reader = new BufferedReader(new InputStreamReader(url.openStream()));
+        assertEquals(reader.readLine(), "Hello, World!");
+    }
 }

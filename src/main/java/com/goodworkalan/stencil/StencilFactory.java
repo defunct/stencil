@@ -49,30 +49,30 @@ public class StencilFactory {
     private URI baseURI;
     
     /** The map of protocols to resource resolvers. */
-	private final Map<String, ResourceResolver> resourceResolvers = new ConcurrentHashMap<String, ResourceResolver>();
+    private final Map<String, ResourceResolver> resourceResolvers = new ConcurrentHashMap<String, ResourceResolver>();
 
-	private static final Diffuser diffuser = new Diffuser();
+    private static final Diffuser diffuser = new Diffuser();
     
     /** The cache of compiled and verified stencils. */
     private final ConcurrentMap<URI, Page> stencils = new ConcurrentHashMap<URI, Page>();
     
     /**
-	 * Add a resource resolver for the given protocol scheme. The protocol
-	 * scheme is the first part of a full URL, such as <code>http</code>,
-	 * <code>ftp</code>, or <code>file</code>. This <code>StencilFactory</code>
-	 * will use the given resource resolver to obtain a URL from a URI when the
-	 * URI is that of the given protocol.
-	 * 
-	 * @param scheme
-	 *            The protocol.
-	 * @param resourceResolver
-	 *            The resource resolver.
-	 */
-	public void addResolver(String scheme, ResourceResolver resourceResolver) {
-		resourceResolvers.put(scheme, resourceResolver);
-	}
+     * Add a resource resolver for the given protocol scheme. The protocol
+     * scheme is the first part of a full URL, such as <code>http</code>,
+     * <code>ftp</code>, or <code>file</code>. This <code>StencilFactory</code>
+     * will use the given resource resolver to obtain a URL from a URI when the
+     * URI is that of the given protocol.
+     * 
+     * @param scheme
+     *            The protocol.
+     * @param resourceResolver
+     *            The resource resolver.
+     */
+    public void addResolver(String scheme, ResourceResolver resourceResolver) {
+        resourceResolvers.put(scheme, resourceResolver);
+    }
 
-	public synchronized URI getBaseURI() {
+    public synchronized URI getBaseURI() {
         return baseURI;
     }
 
@@ -89,7 +89,7 @@ public class StencilFactory {
     }
 
     public void stencil(Injector injector, URI uri, TransformerHandler handler) throws SAXException {
-    	stencil(injector, uri, handler, handler, handler);
+        stencil(injector, uri, handler, handler, handler);
     }
 
     public void stencil(Injector injector, URI uri, ContentHandler content, LexicalHandler lexical, DTDHandler dtd) throws SAXException {
@@ -143,11 +143,11 @@ public class StencilFactory {
     }
     
     private URL getURL(Injector injector, URI uri) throws MalformedURLException {
-    	ResourceResolver resourceResolver = resourceResolvers.get(uri.getScheme());
-    	if (resourceResolver == null) {
-    		return uri.toURL();
-    	}
-    	return resourceResolver.getURL(injector, uri);
+        ResourceResolver resourceResolver = resourceResolvers.get(uri.getScheme());
+        if (resourceResolver == null) {
+            return uri.toURL();
+        }
+        return resourceResolver.getURL(injector, uri);
     }
 
     private Page compile2(Injector injector, URI uri, ContentHandler output, LexicalHandler lexical, DTDHandler dtd) throws SAXException {
@@ -156,7 +156,7 @@ public class StencilFactory {
         // Load the document.
         List<Object> nodes;
         try {
-        	URL url = getURL(injector, uri); 
+            URL url = getURL(injector, uri); 
             nodes = InOrderDocument.readInOrderDocument(url.openStream());
         } catch (SAXException e) {
             throw new StencilException(e, "Invalid XML in [%s].", uri);
@@ -171,22 +171,22 @@ public class StencilFactory {
         for (int index = offset, stop = nodes.size(), height = stack.size(); index < stop; index++) {
             Object object = nodes.get(index);
             if (object instanceof NotationDeclaration) {
-            	if (dtd != null) {
-            		NotationDeclaration nd = (NotationDeclaration) object;
-            		dtd.notationDecl(nd.name, nd.publicId, nd.systemId);
-            	}
+                if (dtd != null) {
+                    NotationDeclaration nd = (NotationDeclaration) object;
+                    dtd.notationDecl(nd.name, nd.publicId, nd.systemId);
+                }
             } else if (object instanceof Comment) {
-            	if (lexical != null) {
-            		String text = ((Comment) object).text;
-            		lexical.comment(text.toCharArray(), 0, text.length());
-            	}
+                if (lexical != null) {
+                    String text = ((Comment) object).text;
+                    lexical.comment(text.toCharArray(), 0, text.length());
+                }
             } else if (object instanceof DocumentTypeDefinition) {
-            	DocumentTypeDefinition doctype = (DocumentTypeDefinition) object;
-            	if (doctype.start) {
-            		lexical.startDTD(doctype.name, doctype.publicId, doctype.systemId);
-            	} else {
-            		lexical.endDTD();
-            	}
+                DocumentTypeDefinition doctype = (DocumentTypeDefinition) object;
+                if (doctype.start) {
+                    lexical.startDTD(doctype.name, doctype.publicId, doctype.systemId);
+                } else {
+                    lexical.endDTD();
+                }
             } else if (object instanceof String[]) {
                 if (!stack.getLast().skip) {
                     String[] mapping = (String[]) object;
@@ -344,30 +344,30 @@ public class StencilFactory {
                             }
                         }
                         if (localName.equals("unless")) {
-                        	condition = !condition;
+                            condition = !condition;
                         }
                         if (condition) {
                             stack.addLast(new Level());
                             stack.getLast().hasElement = true;
                             foo(injector, stack, uri, nodes, index + 1, page, output, lexical, dtd);
                             stack.removeLast();
-                        	Level level = stack.get(stack.size() - 2);
-                        	if (level.choose) {
-                        		level.skip = true;
-                        	}
+                            Level level = stack.get(stack.size() - 2);
+                            if (level.choose) {
+                                level.skip = true;
+                            }
                         }
                     } else if (localName.equals("default")) {
                         stack.addLast(new Level());
                         stack.getLast().hasElement = true;
                         foo(injector, stack, uri, nodes, index + 1, page, output, lexical, dtd);
                         stack.removeLast();
-                    	Level level = stack.get(stack.size() - 2);
-                    	if (level.choose) {
-                    		level.skip = true;
-                    	}
+                        Level level = stack.get(stack.size() - 2);
+                        if (level.choose) {
+                            level.skip = true;
+                        }
                     } else if (localName.equals("choose")) {
-                    	stack.getLast().choose = true;
-                    	stack.getLast().skip = false;
+                        stack.getLast().choose = true;
+                        stack.getLast().skip = false;
                     }
                 }
                 resolved = getAttributes(stack, resolved, contextType, getSelected(stack), element.line, uri);
@@ -458,26 +458,26 @@ public class StencilFactory {
         }
         Type type = actual;
         for (int i = 0; i < path.size(); i++) {
-        	Part part = path.get(i);
-        	if (Map.class.isAssignableFrom(getRawClass(type))) {
-        		Map<?, ?> map = (Map<?, ?>) object;
-        		object = map.get(part.getName());
-	            type = ((ParameterizedType) type).getActualTypeArguments()[1];
-        	} else {
-	            Map<String, Getter> getters = Getters.getGetters(getRawClass(type));
-	            Getter getter = getters.get(part.getName());
-	            if (getter == null) {
-	                throw new StencilException("Cannot evaluate path [%s] at line [%d] of [%s].", expression, line, uri);
-	            }
-	            if (object != null) {
-	                try {
-	                    object = getter.get(object);
-	                } catch (ReflectiveException e) {
-	                    throw new StencilException(e, "Cannot evaluate [%s] at line [%d] of [%s].", expression, line, uri);
-	                }
-	            }
-	            type = getActualType(getter.getGenericType(), type);
-        	}
+            Part part = path.get(i);
+            if (Map.class.isAssignableFrom(getRawClass(type))) {
+                Map<?, ?> map = (Map<?, ?>) object;
+                object = map.get(part.getName());
+                type = ((ParameterizedType) type).getActualTypeArguments()[1];
+            } else {
+                Map<String, Getter> getters = Getters.getGetters(getRawClass(type));
+                Getter getter = getters.get(part.getName());
+                if (getter == null) {
+                    throw new StencilException("Cannot evaluate path [%s] at line [%d] of [%s].", expression, line, uri);
+                }
+                if (object != null) {
+                    try {
+                        object = getter.get(object);
+                    } catch (ReflectiveException e) {
+                        throw new StencilException(e, "Cannot evaluate [%s] at line [%d] of [%s].", expression, line, uri);
+                    }
+                }
+                type = getActualType(getter.getGenericType(), type);
+            }
         }
         if (object == null) {
             return null;
@@ -486,7 +486,7 @@ public class StencilFactory {
     }
     
     private static <T> Ilk.Box enbox(T object, Type type) {
-    	return new Ilk<T>(){}.assign(new Ilk<T>(){}, type).box(object);
+        return new Ilk<T>(){}.assign(new Ilk<T>(){}, type).box(object);
     }
     
     private static class Actualizer<T> {
