@@ -38,7 +38,16 @@ import com.goodworkalan.ilk.inject.Injector;
 import com.goodworkalan.ilk.inject.InjectorBuilder;
 
 public class StencilTest extends XMLTestCase {
-    public TransformerHandler foo(Result result) throws TransformerConfigurationException, TransformerFactoryConfigurationError {
+	/**
+	 * Create a new transformer handler that records to the given result.
+	 * 
+	 * @param result
+	 *            The result.
+	 * @return A new transformer handler.
+	 * @throws TransformerConfigurationException
+	 *             If for some reason the TransformerHandler cannot be created.
+	 */
+    public TransformerHandler newTransformerHandler(Result result) throws TransformerConfigurationException, TransformerFactoryConfigurationError {
         TransformerHandler handler = ((SAXTransformerFactory) TransformerFactory.newInstance()).newTransformerHandler();
         handler.setResult(result);
         return handler;
@@ -62,11 +71,10 @@ public class StencilTest extends XMLTestCase {
         });
         Injector injector = newInjector.newInjector();
         stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil/test").getAbsoluteFile().toURI());
-        stencils.setInjector(injector);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         StreamResult stream = new StreamResult(out);
-        TransformerHandler handler = foo(stream);
-        stencils.stencil(URI.create("var.xhtml"), handler);
+        TransformerHandler handler = newTransformerHandler(stream);
+        stencils.stencil(injector, URI.create("var.xhtml"), handler);
         String control1 = slurp(getClass().getResourceAsStream("test/var.out.xhtml"));
         String actual = slurp(new ByteArrayInputStream(out.toByteArray()));
         assertXMLEqual(control1, actual);
@@ -111,11 +119,10 @@ public class StencilTest extends XMLTestCase {
         StencilFactory stencils = new StencilFactory();
         Injector injector = newInjector.newInjector();
         stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil/test").getAbsoluteFile().toURI());
-        stencils.setInjector(injector);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         StreamResult stream = new StreamResult(out);
-        TransformerHandler handler = foo(stream);
-        stencils.stencil(URI.create("each.xhtml"), handler);
+        TransformerHandler handler = newTransformerHandler(stream);
+        stencils.stencil(injector, URI.create("each.xhtml"), handler);
         String control1 = slurp(getClass().getResourceAsStream("test/each.out.xhtml"));
         String actual = slurp(new ByteArrayInputStream(out.toByteArray()));
         assertXMLEqual(control1, actual);
@@ -139,11 +146,10 @@ public class StencilTest extends XMLTestCase {
     	StencilFactory stencils = new StencilFactory();
         Injector injector = newInjector.newInjector();
         stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil/test").getAbsoluteFile().toURI());
-        stencils.setInjector(injector);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         StreamResult stream = new StreamResult(out);
-        TransformerHandler handler = foo(stream);
-        stencils.stencil(URI.create("if.xhtml"), handler);
+        TransformerHandler handler = newTransformerHandler(stream);
+        stencils.stencil(injector, URI.create("if.xhtml"), handler);
         String control1 = slurp(getClass().getResourceAsStream("test/if.out.xhtml"));
         String actual = slurp(new ByteArrayInputStream(out.toByteArray()));
         assertXMLEqual(control1, actual);
@@ -165,11 +171,10 @@ public class StencilTest extends XMLTestCase {
     	StencilFactory stencils = new StencilFactory();
         Injector injector = newInjector.newInjector();
         stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil/test").getAbsoluteFile().toURI());
-        stencils.setInjector(injector);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         StreamResult stream = new StreamResult(out);
-        TransformerHandler handler = foo(stream);
-        stencils.stencil(URI.create("default.xhtml"), handler);
+        TransformerHandler handler = newTransformerHandler(stream);
+        stencils.stencil(injector, URI.create("default.xhtml"), handler);
         String control1 = slurp(getClass().getResourceAsStream("test/default.out.xhtml"));
         String actual = slurp(new ByteArrayInputStream(out.toByteArray()));
         assertXMLEqual(control1, actual);
@@ -191,11 +196,10 @@ public class StencilTest extends XMLTestCase {
     	StencilFactory stencils = new StencilFactory();
         Injector injector = newInjector.newInjector();
         stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil/test").getAbsoluteFile().toURI());
-        stencils.setInjector(injector);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         StreamResult stream = new StreamResult(out);
-        TransformerHandler handler = foo(stream);
-        stencils.stencil(URI.create("unless.xhtml"), handler);
+        TransformerHandler handler = newTransformerHandler(stream);
+        stencils.stencil(injector, URI.create("unless.xhtml"), handler);
         String control1 = slurp(getClass().getResourceAsStream("test/unless.out.xhtml"));
         String actual = slurp(new ByteArrayInputStream(out.toByteArray()));
         assertXMLEqual(control1, actual);

@@ -7,7 +7,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -46,23 +48,36 @@ public class StencilFactory {
     /** The base URI from which resource URIs are resolved. */
     private URI baseURI;
     
-    private Injector injector;
-    
-    private static final Diffuser diffuser = new Diffuser();
+    /** The map of protocols to resource resolvers. */
+	private final Map<String, ResourceResolver> resourceResolvers = new ConcurrentHashMap<String, ResourceResolver>();
+
+	private static final Diffuser diffuser = new Diffuser();
     
     /** The cache of compiled and verified stencils. */
     private final ConcurrentMap<URI, Page> stencils = new ConcurrentHashMap<URI, Page>();
     
-    public synchronized URI getBaseURI() {
+    /**
+	 * Add a resource resolver for the given protocol scheme. The protocol
+	 * scheme is the first part of a full URL, such as <code>http</code>,
+	 * <code>ftp</code>, or <code>file</code>. This <code>StencilFactory</code>
+	 * will use the given resource resolver to obtain a URL from a URI when the
+	 * URI is that of the given protocol.
+	 * 
+	 * @param scheme
+	 *            The protocol.
+	 * @param resourceResolver
+	 *            The resource resolver.
+	 */
+	public void addResolver(String scheme, ResourceResolver resourceResolver) {
+		resourceResolvers.put(scheme, resourceResolver);
+	}
+
+	public synchronized URI getBaseURI() {
         return baseURI;
     }
 
     public synchronized void setBaseURI(URI uri) {
         this.baseURI = uri;
-    }
-    
-    public void setInjector(Injector injector) {
-        this.injector = injector;
     }
     
     protected InputStream getInputStream(URI uri) {
@@ -73,21 +88,22 @@ public class StencilFactory {
         }
     }
 
-    public void stencil(URI uri, TransformerHandler handler) throws SAXException {
-    	stencil(uri, handler, handler, handler);
+    public void stencil(Injector injector, URI uri, TransformerHandler handler) throws SAXException {
+    	stencil(injector, uri, handler, handler, handler);
     }
 
-    public void stencil(URI uri, ContentHandler content, LexicalHandler lexical, DTDHandler dtd) throws SAXException {
+    public void stencil(Injector injector, URI uri, ContentHandler content, LexicalHandler lexical, DTDHandler dtd) throws SAXException {
         URI resolved = baseURI.resolve(uri).normalize();
         Page page = stencils.get(resolved);
         if (page == null) {
-            page = compile2(uri, content, lexical, dtd);
+            page = compile2(injector, uri, content, lexical, dtd);
             stencils.put(resolved, page);
         } else {
-            compile(uri, page.nodes, 0, new Page(new ArrayList<Object>()), content, lexical, dtd);
+            compile(injector, uri, page.nodes, 0, new Page(new ArrayList<Object>()), content, lexical, dtd);
         }
     }
     
+    // TODO Document.
     private static String getNamespace(LinkedList<Level> stack, String prefix) {
         ListIterator<Level> iterator = stack.listIterator(stack.size());
         while (iterator.hasPrevious()) {
@@ -125,25 +141,33 @@ public class StencilFactory {
     private boolean isBlank(String string) {
         return string == null || string.equals("");
     }
+    
+    private URL getURL(Injector injector, URI uri) throws MalformedURLException {
+    	ResourceResolver resourceResolver = resourceResolvers.get(uri.getScheme());
+    	if (resourceResolver == null) {
+    		return uri.toURL();
+    	}
+    	return resourceResolver.getURL(injector, uri);
+    }
 
-    private Page compile2(URI uri, ContentHandler output, LexicalHandler lexical, DTDHandler dtd) throws SAXException {
+    private Page compile2(Injector injector, URI uri, ContentHandler output, LexicalHandler lexical, DTDHandler dtd) throws SAXException {
         // Normalize the absolute URI.
-        uri = baseURI.resolve(uri).normalize();
-        
+        uri = getBaseURI().resolve(uri).normalize();
         // Load the document.
         List<Object> nodes;
         try {
-            nodes = InOrderDocument.readInOrderDocument(baseURI.resolve(uri).normalize().toURL().openStream());
+        	URL url = getURL(injector, uri); 
+            nodes = InOrderDocument.readInOrderDocument(url.openStream());
         } catch (SAXException e) {
             throw new StencilException(e, "Invalid XML in [%s].", uri);
         } catch (IOException e) {
             throw new StencilException(e, "Cannot read [%s].", uri);
         }
         
-        return compile(uri, nodes, 0, new Page(nodes), output, lexical, dtd);
+        return compile(injector, uri, nodes, 0, new Page(nodes), output, lexical, dtd);
     }
 
-    private <T> void foo(LinkedList<Level> stack, URI uri, List<Object> nodes, int offset, Page page, ContentHandler output, LexicalHandler lexical, DTDHandler dtd) throws SAXException {
+    private <T> void foo(Injector injector, LinkedList<Level> stack, URI uri, List<Object> nodes, int offset, Page page, ContentHandler output, LexicalHandler lexical, DTDHandler dtd) throws SAXException {
         for (int index = offset, stop = nodes.size(), height = stack.size(); index < stop; index++) {
             Object object = nodes.get(index);
             if (object instanceof NotationDeclaration) {
@@ -241,7 +265,7 @@ public class StencilFactory {
                     }
                 }
                 Ilk.Box context = getContext(stack);
-                Type contextType = ((ParameterizedType) context.key.type).getActualTypeArguments()[0];
+                Type contextType = context == null ? null : ((ParameterizedType) context.key.type).getActualTypeArguments()[0];
                 if (inStencilNamespace) {
                     stack.getLast().skip = true;
                     if (localName.equals("import")) {
@@ -285,7 +309,7 @@ public class StencilFactory {
                             stack.addLast(new Level());
                             stack.getLast().hasElement = true;
                             stack.getLast().context = actualizer.actual().box();
-                            foo(stack, uri, nodes, index + 1, page, output, lexical, dtd);
+                            foo(injector, stack, uri, nodes, index + 1, page, output, lexical, dtd);
                             stack.removeLast();
                         } else {
                             for (T item : actualizer.collection(value)) {
@@ -293,7 +317,7 @@ public class StencilFactory {
                                 stack.getLast().hasElement = true;
                                 stack.getLast().context = actualizer.actual().box();
                                 stack.getLast().selected = actualizer.actual().box(item);
-                                foo(stack, uri, nodes, index + 1, page, output, lexical, dtd);
+                                foo(injector, stack, uri, nodes, index + 1, page, output, lexical, dtd);
                                 stack.removeLast();
                             }
                         }
@@ -325,7 +349,7 @@ public class StencilFactory {
                         if (condition) {
                             stack.addLast(new Level());
                             stack.getLast().hasElement = true;
-                            foo(stack, uri, nodes, index + 1, page, output, lexical, dtd);
+                            foo(injector, stack, uri, nodes, index + 1, page, output, lexical, dtd);
                             stack.removeLast();
                         	Level level = stack.get(stack.size() - 2);
                         	if (level.choose) {
@@ -335,7 +359,7 @@ public class StencilFactory {
                     } else if (localName.equals("default")) {
                         stack.addLast(new Level());
                         stack.getLast().hasElement = true;
-                        foo(stack, uri, nodes, index + 1, page, output, lexical, dtd);
+                        foo(injector, stack, uri, nodes, index + 1, page, output, lexical, dtd);
                         stack.removeLast();
                     	Level level = stack.get(stack.size() - 2);
                     	if (level.choose) {
@@ -359,7 +383,8 @@ public class StencilFactory {
         }
  
     }
-    private Page compile(URI uri, List<Object> nodes, int offset, Page page, ContentHandler content, LexicalHandler lexical, DTDHandler dtd) throws SAXException {
+
+    private Page compile(Injector injector, URI uri, List<Object> nodes, int offset, Page page, ContentHandler content, LexicalHandler lexical, DTDHandler dtd) throws SAXException {
         // Stack of state based on document element depth.
         LinkedList<Level> stack = new LinkedList<Level>();
         
@@ -371,7 +396,7 @@ public class StencilFactory {
             content.startDocument();
         }
         
-        foo(stack, uri, nodes, offset, page, content, lexical, dtd);
+        foo(injector, stack, uri, nodes, offset, page, content, lexical, dtd);
        
         if (content != null) {
             content.endDocument();
