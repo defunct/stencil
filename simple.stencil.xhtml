@@ -2,16 +2,21 @@
 @Import(com.goodworkalan.application.Index)
 @Context(Controller Index.Get)
 @Render(stencils.document)
-  @Content(header)
+  @Part(header)
     <title>@Get(Document title)</title>
-  @Content(sidebar)
+  @Part(sidebar)
     <ul>
       @Each(link)
         <li><a @If(selected)class="seletcted"@If href="@Get(href)">@Get(title)</a></li>
-      @Each
-      @If(1)
-      @Elsif(2)
+      @If(href)
+      @Elsif(people)
+        @Each(people)    
+          <p>@Get(firstName) @Get(lastName)</p>
       @Else
+
+      @If@(script)
+<p>This is a very particular bit that will not be dedented.</p>
+<script>alert('Hello, World!');</script>
       @If
     </ul>
 @Stencil(document)
@@ -20,26 +25,12 @@
     @Nested(header)
   <head>
   <body>
+    @Comment
+      Not sure what to make of the backwhack. I forgot what it was about. I'm
+      assuming that it has something to do with the stencil starting at the
+      first bit of whitespace.
     @Stencil\(hello)
       @Nested(greeting)Hello@Nested, @Nested(addressee)World@Nested!
   </body>
 </html>
-@Stencil(stencils.hello greeting="Hello" to-greet="World)
-<app:document xmlns:s="http://stencil.goodworkalan.com:2010/stencil"
-              xmlns:app="genre://foo.agtrz.com/" xmlns="http://www.w3.org/1999/xhtml" s:include="snippits.xhtml">
-  <s:snippit name="app:imports">
-    <s:import type="com.goodworkalan.stencil.api.Document"/>
-  </s>
-  <div s:snippit="app:hello">
-    <span s:nested="app:greeting">Hello</span>, <span s:nested="app:world">World</span> 
-  </div>
-  <app:hello>
-    <app:greeting>Hello</app:greeting>
-    <app:to-greet>World</app:to-greet>
-  </app:hello>
-  <app:hello app:greeting="Hello" app:to-greet="World"/>
-  <app:head>
-    <title><s:var name="title">Example Title</s:var></title>
-  </app:head>
-</app:document>
-<!-- vim: set sw=2 ts=2 nowrap: -->
+@ vim: set et:
