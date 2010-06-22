@@ -5,7 +5,7 @@ package com.goodworkalan.stencil;
  *
  * @author Alan Gutierrez
  */
-public class DocumentTypeDefinition {
+class DocumentTypeDefinition {
     /** Whether this is the start of a DTD. */
     public final boolean start;
 

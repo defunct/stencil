@@ -41,6 +41,7 @@ import com.goodworkalan.reflective.ReflectiveException;
 import com.goodworkalan.reflective.getter.Getter;
 import com.goodworkalan.reflective.getter.Getters;
 
+// TODO Document.
 public class StencilFactory {
     /** The Stencil name space URI. */
     public final static String STENCIL_URI = "http://stencil.goodworkalan:2010/stencil";
@@ -72,14 +73,17 @@ public class StencilFactory {
         resourceResolvers.put(scheme, resourceResolver);
     }
 
+    // TODO Document.
     public synchronized URI getBaseURI() {
         return baseURI;
     }
 
+    // TODO Document.
     public synchronized void setBaseURI(URI uri) {
         this.baseURI = uri;
     }
     
+    // TODO Document.
     protected InputStream getInputStream(URI uri) {
         try {
             return uri.toURL().openStream();
@@ -88,10 +92,12 @@ public class StencilFactory {
         }
     }
 
+    // TODO Document.
     public void stencil(Injector injector, URI uri, TransformerHandler handler) throws SAXException {
         stencil(injector, uri, handler, handler, handler);
     }
 
+    // TODO Document.
     public void stencil(Injector injector, URI uri, ContentHandler content, LexicalHandler lexical, DTDHandler dtd) throws SAXException {
         URI resolved = baseURI.resolve(uri).normalize();
         Page page = stencils.get(resolved);
@@ -116,6 +122,7 @@ public class StencilFactory {
         return null;
     }
     
+    // TODO Document.
     private Object getSelected(LinkedList<Level> stack) {
         ListIterator<Level> iterator = stack.listIterator(stack.size());
         while (iterator.hasPrevious()) {
@@ -127,6 +134,7 @@ public class StencilFactory {
         return null;
     }
 
+    // TODO Document.
     private Ilk.Box getContext(LinkedList<Level> stack) {
         ListIterator<Level> iterator = stack.listIterator(stack.size());
         while (iterator.hasPrevious()) {
@@ -138,10 +146,12 @@ public class StencilFactory {
         return null;
     }
     
+    // TODO Document.
     private boolean isBlank(String string) {
         return string == null || string.equals("");
     }
     
+    // TODO Document.
     private URL getURL(Injector injector, URI uri) throws MalformedURLException {
         ResourceResolver resourceResolver = resourceResolvers.get(uri.getScheme());
         if (resourceResolver == null) {
@@ -150,6 +160,7 @@ public class StencilFactory {
         return resourceResolver.getURL(injector, uri);
     }
 
+    // TODO Document.
     private Page compile2(Injector injector, URI uri, ContentHandler output, LexicalHandler lexical, DTDHandler dtd) throws SAXException {
         // Normalize the absolute URI.
         uri = getBaseURI().resolve(uri).normalize();
@@ -167,6 +178,7 @@ public class StencilFactory {
         return compile(injector, uri, nodes, 0, new Page(nodes), output, lexical, dtd);
     }
 
+    // TODO Document.
     private <T> void foo(Injector injector, LinkedList<Level> stack, URI uri, List<Object> nodes, int offset, Page page, ContentHandler output, LexicalHandler lexical, DTDHandler dtd) throws SAXException {
         for (int index = offset, stop = nodes.size(), height = stack.size(); index < stop; index++) {
             Object object = nodes.get(index);
@@ -384,6 +396,7 @@ public class StencilFactory {
  
     }
 
+    // TODO Document.
     private Page compile(Injector injector, URI uri, List<Object> nodes, int offset, Page page, ContentHandler content, LexicalHandler lexical, DTDHandler dtd) throws SAXException {
         // Stack of state based on document element depth.
         LinkedList<Level> stack = new LinkedList<Level>();
@@ -405,6 +418,7 @@ public class StencilFactory {
         return page;
     }
     
+    // TODO Document.
     private static String getQualifiedName(List<Level> stack, String namespaceURI, String localName) {
         if (namespaceURI.equals("")) {
             return localName;
@@ -420,10 +434,12 @@ public class StencilFactory {
         throw new StencilException("");
     }
     
+    // TODO Document.
     private static boolean isText(Object object) {
         return object instanceof String;
     }
     
+    // TODO Document.
     public static AttributesImpl getAttributes(LinkedList<Level> stack, AttributesImpl resolved, Type actual, Object object, int line, URI uri) {
         for (int j = 0, stop = resolved.getLength(); j < stop; j++) {
             if (resolved.getURI(j).equals(STENCIL_URI)) {
@@ -444,11 +460,13 @@ public class StencilFactory {
         return resolved;
     }
 
+    // TODO Document.
     private static String getString(Type actual, String expression, Object object, int line, URI uri) {
         Ilk.Box box = get(actual, expression, object, line, uri);
         return box == null ? null : diffuser.diffuse(box.object).toString();
     }
     
+    // TODO Document.
     private static <T> Ilk.Box get(Type actual, String expression, Object object, int line, URI uri) {
         Path path;
         try {
@@ -485,10 +503,12 @@ public class StencilFactory {
         return enbox(object, type);
     }
     
+    // TODO Document.
     private static <T> Ilk.Box enbox(T object, Type type) {
         return new Ilk<T>(){}.assign(new Ilk<T>(){}, type).box(object);
     }
     
+    // TODO Document.
     private static class Actualizer<T> {
         private Ilk<T> ilk;
         private final Type type;
