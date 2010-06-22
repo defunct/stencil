@@ -1,14 +1,14 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns:s="http://stencil.goodworkalan:2010/stencil"
-    xmlns:app="http://stencil.goodworkalan:2010/application"
+<html xmlns:s="http://stencil.goodworkalan.com:2010/stencil"
+    xmlns:app="http://stencil.goodworkalan.com:2010/application"
     s:context="com.goodworkalan.stencil.Person"
         xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <title>Hello, World!</title>
 </head>
 <body>
-	<p>First Name: <s:var name="firstName">Fred</s:var></p>
-	<p>Last Name: <s:var name="lastName">Flintstone</s:var></p>
+	<p>First Name: <s:var path="firstName">Fred</s:var></p>
+	<p>Last Name: <s:var path="lastName">Flintstone</s:var></p>
 	<form name="test" s:firstName="app:attribute">
 	  First Name: <input name="firstName" s:firstName="value" />
 	  Last Name: <input name="lastName" s:lastName="value" />

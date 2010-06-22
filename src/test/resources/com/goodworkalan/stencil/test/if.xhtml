@@ -1,5 +1,5 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns:s="http://stencil.goodworkalan:2010/stencil"
+<html xmlns:s="http://stencil.goodworkalan.com:2010/stencil"
     s:context="java.util.Map&lt;java.lang.String, com.goodworkalan.stencil.Person&gt;"
         xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -7,25 +7,25 @@
 </head>
 <body>
   <s:if path="first">
-    <p>First Name: <s:var name="first.firstName">Steve</s:var></p>
-    <p>Last Name: <s:var name="first.lastName">McQueen</s:var></p>
+    <p>First Name: <s:var path="first.firstName">Steve</s:var></p>
+    <p>Last Name: <s:var path="first.lastName">McQueen</s:var></p>
   </s:if>
   <s:if path="second">
-    <p>First Name: <s:var name="second.firstName">Steve</s:var></p>
-    <p>Last Name: <s:var name="second.lastName">McQueeen</s:var></p>
+    <p>First Name: <s:var path="second.firstName">Steve</s:var></p>
+    <p>Last Name: <s:var path="second.lastName">McQueeen</s:var></p>
   </s:if>
   <s:choose>
   <s:if path="first">
-    <p>First Name: <s:var name="first.firstName">Steve</s:var></p>
-    <p>Last Name: <s:var name="first.lastName">McQueen</s:var></p>
+    <p>First Name: <s:var path="first.firstName">Steve</s:var></p>
+    <p>Last Name: <s:var path="first.lastName">McQueen</s:var></p>
   </s:if>
   <s:if path="second">
-    <p>First Name: <s:var name="second.firstName">Steve</s:var></p>
-    <p>Last Name: <s:var name="second.lastName">McQueeen</s:var></p>
+    <p>First Name: <s:var path="second.firstName">Steve</s:var></p>
+    <p>Last Name: <s:var path="second.lastName">McQueeen</s:var></p>
   </s:if>
   <s:if path="third">
-    <p>First Name: <s:var name="third.firstName">Steve</s:var></p>
-    <p>Last Name: <s:var name="third.lastName">McQueeen</s:var></p>
+    <p>First Name: <s:var path="third.firstName">Steve</s:var></p>
+    <p>Last Name: <s:var path="third.lastName">McQueeen</s:var></p>
   </s:if>
   <s:default>
     <p>Error.</p>

@@ -1,5 +1,5 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns:s="http://stencil.goodworkalan:2010/stencil"
+<html xmlns:s="http://stencil.goodworkalan.com:2010/stencil"
           s:context="com.goodworkalan.stencil.Clique"
             xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -13,8 +13,8 @@
     </tr>
     <s:each path="people">
       <tr>
-        <td><s:var name="firstName">Steve</s:var></td>
-        <td><s:var name="lastName">McQueen</s:var></td>
+        <td><s:var path="firstName">Steve</s:var></td>
+        <td><s:var path="lastName">McQueen</s:var></td>
       </tr>
     </s:each>
   </table>
