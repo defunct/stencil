@@ -208,7 +208,7 @@ public class StencilFactory {
     }
 
     // TODO Document.
-    private Page compile(Injector injector, URI uri, ContentHandler output, LexicalHandler lexical, DTDHandler dtd) throws SAXException {
+    private Page compile(Injector injector, URI uri, ContentHandler content, LexicalHandler lexical, DTDHandler dtd) throws SAXException {
         // Normalize the absolute URI.
         uri = getBaseURI().resolve(uri).normalize();
         // Load the document.
@@ -222,7 +222,7 @@ public class StencilFactory {
             throw new StencilException(e, "Cannot read [%s].", uri);
         }
         
-        return compile(injector, uri, nodes, 0, new Page(uri, nodes), output, lexical, dtd);
+        return compile(injector, uri, nodes, 0, new Page(uri, nodes), content, lexical, dtd);
     }
     
     public LinkedList<Level> newStack() {
@@ -245,7 +245,7 @@ public class StencilFactory {
      *            The stencil.
      * @param nested
      *            The nested content.
-     * @param output
+     * @param content
      *            The SAX content handler.
      * @param lexical
      *            The SAX lexical handler.
@@ -255,7 +255,7 @@ public class StencilFactory {
      * @throws SAXException
      *             For any error raised by the parser.
      */
-    private <T> int compile(Injector injector, LinkedList<Level> stack, LinkedList<Level> stencilStack, Stencil stencil, Stencil nested, ContentHandler output, LexicalHandler lexical, DTDHandler dtd) throws SAXException {
+    private <T> int compile(Injector injector, LinkedList<Level> stack, LinkedList<Level> stencilStack, Stencil stencil, Stencil nested, ContentHandler content, LexicalHandler lexical, DTDHandler dtd) throws SAXException {
         List<Object> nodes = stencil.page.nodes;
         int nestedIndex = nested.index;
         boolean hasNested = false;
@@ -293,8 +293,8 @@ public class StencilFactory {
                     stencilStack.getLast().prefixes.put(mapping[1], mapping[0]);
                     stack.getLast().namespaceURIs.put(mapping[0], mapping[1]);
                     stack.getLast().prefixes.put(mapping[1], mapping[0]);
-                    if (output != null) {
-                        output.startPrefixMapping(mapping[0], mapping[1]);
+                    if (content != null) {
+                        content.startPrefixMapping(mapping[0], mapping[1]);
                     }
                 }
             } else if (object instanceof Element) {
@@ -303,12 +303,12 @@ public class StencilFactory {
                     if (height == stack.size()) {
                         break;
                     }
-                    if (output != null) {
+                    if (content != null) {
                         if (!stack.getLast().skip && !stack.getLast().choose) {
-                            output.endElement(element.namespaceURI, element.localName, getQualifiedName(stack, element.namespaceURI, element.localName));
+                            content.endElement(element.namespaceURI, element.localName, getQualifiedName(stack, element.namespaceURI, element.localName));
                         }
                         for (String prefix : stack.getLast().namespaceURIs.keySet()) {
-                            output.endPrefixMapping(prefix);
+                            content.endPrefixMapping(prefix);
                         }
                     }
                     stack.removeLast();
@@ -382,7 +382,7 @@ public class StencilFactory {
                         subStack.addLast(new Level());
                         subStack.getLast().hasElement = true;
                         subStack.getLast().isStencil = true;
-                        index = compile(injector, subStack, newStack(), subStencil, new Stencil(), output, lexical, dtd) - 1;
+                        index = compile(injector, subStack, newStack(), subStencil, new Stencil(), content, lexical, dtd) - 1;
                         subStack.removeLast();
                     }
                 }
@@ -398,7 +398,7 @@ public class StencilFactory {
                                 throw new StencilException(e, "Cannot load type [%s] at line [%s] of [%s].", context, element.line, stencil.page.uri);
                             }
                         }
-                        if (output != null) {
+                        if (content != null) {
                             Ilk.Key key = new Ilk.Key(((ParameterizedType) stack.getLast().context.key.type).getActualTypeArguments()[0]);
                             stack.getLast().selected = injector.instance(key, null);
                         }
@@ -443,7 +443,7 @@ public class StencilFactory {
                                 Stencil subStencil = new Stencil(nested.page, nestedIndex);
                                 stack.addLast(new Level());
                                 stack.getLast().hasElement = true;
-                                compile(injector, stack, newStack(), subStencil, new Stencil(), output, lexical, dtd);
+                                compile(injector, stack, newStack(), subStencil, new Stencil(), content, lexical, dtd);
                                 stack.removeLast();
                             } else {
                                 while (!(nested.page.nodes.get(nestedIndex) instanceof Element)) {
@@ -458,7 +458,7 @@ public class StencilFactory {
                                             nestedIndex++;
                                             stack.addLast(new Level());
                                             stack.getLast().hasElement = true;
-                                            nestedIndex = compile(injector, stack, newStack(), new Stencil(nested.page, nestedIndex), new Stencil(), output, lexical, dtd) + 1;
+                                            nestedIndex = compile(injector, stack, newStack(), new Stencil(nested.page, nestedIndex), new Stencil(), content, lexical, dtd) + 1;
                                             stack.removeLast();
                                         }
                                     }
@@ -471,9 +471,9 @@ public class StencilFactory {
                             throw new StencilException("Missing var name attribute at line [%s] of [%s].", element.line, stencil.page.uri);
                         }
                         String value = getString(contextType, name, getSelected(stack), element.line, stencil.page.uri);
-                        if (output != null) {
+                        if (content != null) {
                             stack.getLast().skip = true;
-                            output.characters(value.toCharArray(), 0, value.length());
+                            content.characters(value.toCharArray(), 0, value.length());
                         }
                     } else if (localName.equals("each")) {
                         String path = resolved.getValue(resolved.getIndex("path"));
@@ -485,11 +485,11 @@ public class StencilFactory {
                             throw new StencilException("Missing path attribute for each at line [%s] of [%s].", element.line, stencil.page.uri);
                         }
                         Actualizer<T> actualizer = new Actualizer<T>(value.key.get(0).type);
-                        if (output == null) {
+                        if (content == null) {
                             stack.addLast(new Level());
                             stack.getLast().hasElement = true;
                             stack.getLast().context = actualizer.actual().box();
-                            compile(injector, stack, newStack(), new Stencil(stencil.page, index + 1), new Stencil(), output, lexical, dtd);
+                            compile(injector, stack, newStack(), new Stencil(stencil.page, index + 1), new Stencil(), content, lexical, dtd);
                             stack.removeLast();
                         } else {
                             for (T item : actualizer.collection(value)) {
@@ -497,7 +497,7 @@ public class StencilFactory {
                                 stack.getLast().hasElement = true;
                                 stack.getLast().context = actualizer.actual().box();
                                 stack.getLast().selected = actualizer.actual().box(item);
-                                compile(injector, stack, newStack(), new Stencil(stencil.page, index + 1), new Stencil(), output, lexical, dtd);
+                                compile(injector, stack, newStack(), new Stencil(stencil.page, index + 1), new Stencil(), content, lexical, dtd);
                                 stack.removeLast();
                             }
                         }
@@ -529,7 +529,7 @@ public class StencilFactory {
                         if (condition) {
                             stack.addLast(new Level());
                             stack.getLast().hasElement = true;
-                            compile(injector, stack, newStack(), new Stencil(stencil.page, index + 1), new Stencil(), output, lexical, dtd);
+                            compile(injector, stack, newStack(), new Stencil(stencil.page, index + 1), new Stencil(), content, lexical, dtd);
                             stack.removeLast();
                             Level level = stack.get(stack.size() - 2);
                             if (level.choose) {
@@ -539,7 +539,7 @@ public class StencilFactory {
                     } else if (localName.equals("default")) {
                         stack.addLast(new Level());
                         stack.getLast().hasElement = true;
-                        compile(injector, stack, newStack(), new Stencil(stencil.page, index + 1), new Stencil(), output, lexical, dtd);
+                        compile(injector, stack, newStack(), new Stencil(stencil.page, index + 1), new Stencil(), content, lexical, dtd);
                         stack.removeLast();
                         Level level = stack.get(stack.size() - 2);
                         if (level.choose) {
@@ -561,17 +561,17 @@ public class StencilFactory {
                         LinkedList<Level> subStack = newStack();
                         subStack.getLast().namespaceURIs.putAll(subStencil.namespaceURIs);
                         subStack.getLast().prefixes.putAll(subStencil.prefixes);
-                        index = compile(injector, stack, subStack, subStencil, new Stencil(stencil.page, index + 1), output, lexical, dtd) - 1;
+                        index = compile(injector, stack, subStack, subStencil, new Stencil(stencil.page, index + 1), content, lexical, dtd) - 1;
                         stack.removeLast();
                     }
                 }
-                if (output != null && !stack.getLast().skip && !stack.getLast().choose) {
-                    output.startElement(element.namespaceURI, element.localName, getQualifiedName(stack, element.namespaceURI, element.localName), resolved);
+                if (content != null && !stack.getLast().skip && !stack.getLast().choose) {
+                    content.startElement(element.namespaceURI, element.localName, getQualifiedName(stack, element.namespaceURI, element.localName), resolved);
                 }
             } else if (object instanceof String) {
-                if (output != null && !stack.getLast().skip && !stack.getLast().choose) {
+                if (content != null && !stack.getLast().skip && !stack.getLast().choose) {
                     String characters = (String) object;
-                    output.characters(characters.toCharArray(), 0, characters.length());
+                    content.characters(characters.toCharArray(), 0, characters.length());
                 }
             }
         }
