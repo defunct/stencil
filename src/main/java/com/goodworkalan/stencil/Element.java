@@ -23,19 +23,6 @@ class Element {
     /** The element attributes. */
     public final Attributes attributes;
     
-//    public String getAttribute(String name, String namespaceURI) {
-//        for (int i = 0; i < attributes.getLength(); i++) {
-//            if (attributes.getURI(i).equals(namespaceURI) && attributes.getLocalName(i).equals(name)) {
-//                return attributes.getValue(i); 
-//            }
-//        }
-//        return null;
-//    }
-//    
-//    public String getAttribute(String localName) {
-//        return getAttribute(localName, "");
-//    }
-
     /**
      * Create a new XML element start or end.
      * 
