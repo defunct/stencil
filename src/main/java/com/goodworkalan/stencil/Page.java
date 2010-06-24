@@ -16,7 +16,10 @@ import javax.xml.namespace.QName;
 class Page {
     /** The URI of the XML document. */
     public final URI uri;
-    
+
+    /** The last modified time of the resource. */
+    public final long lastModified;
+
     /** The list of in order document events. */
     public final List<Object> nodes;
 
@@ -26,11 +29,16 @@ class Page {
     /**
      * Create a page with the given list of in order document nodes.
      * 
+     * @param uri
+     *            The URI of the XML document.
+     * @param lastModified
+     *            The last modified time of the resource.
      * @param nodes
      *            The list of nodes.
      */
-    public Page(URI uri, List<Object> nodes) {
+    public Page(URI uri, long lastModified, List<Object> nodes) {
         this.uri = uri;
         this.nodes = nodes;
+        this.lastModified = lastModified;
     }
 }

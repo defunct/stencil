@@ -10,6 +10,7 @@ import java.lang.reflect.Type;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.net.URLConnection;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
@@ -40,14 +41,24 @@ import com.goodworkalan.reflective.ReflectiveException;
 import com.goodworkalan.reflective.getter.Getter;
 import com.goodworkalan.reflective.getter.Getters;
 
-// TODO Document.
+/**
+ * Generates Stencil output using Stencils identified by URIs.
+ *
+ * @author Alan Gutierrez
+ */
 public class StencilFactory {
     /** The Stencil name space URI. */
-    public final static String STENCIL_URI = "http://stencil.goodworkalan.com:2010/stencil";                                                   
+    public final static String STENCIL_URI = "http://stencil.goodworkalan.com:2010/stencil";
+    
+    /** The namespace URI for attribute variables. */
+    public final static String STENCIL_ATTRIBUTE_URI = "http://stencil.goodworkalan.com:2010/stencil/variable";
     
     /** The base URI from which resource URIs are resolved. */
     private URI baseURI;
     
+    /** Whether to check if a URI resource is dirty and rebuild the stencil. */
+    private boolean checkDirty = true;
+
     /** The map of protocols to resource resolvers. */
     private final Map<String, ResourceResolver> resourceResolvers = new ConcurrentHashMap<String, ResourceResolver>();
 
@@ -72,7 +83,11 @@ public class StencilFactory {
         resourceResolvers.put(scheme, resourceResolver);
     }
 
-    // TODO Document.
+    /**
+     * Get the base URI used to resolve relative URIs.
+     * 
+     * @return The base URI.
+     */
     public synchronized URI getBaseURI() {
         return baseURI;
     }
@@ -84,6 +99,27 @@ public class StencilFactory {
      */
     public synchronized void setBaseURI(URI uri) {
         this.baseURI = uri;
+    }
+
+    /**
+     * Get whether to check if a URI resource is dirty and rebuild the stencil.
+     * 
+     * @return True if stencils will be checked and recompiled if they have
+     *         changed.
+     */
+    public synchronized boolean isCheckDirty() {
+        return checkDirty;
+    }
+
+    /**
+     * Set whether to check if a URI resource is dirty and rebuild the stencil.
+     * 
+     * @param checkDirty
+     *            If true, stencils will be checked and recompiled if they have
+     *            changed.
+     */
+    public synchronized void setCheckDirty(boolean checkDirty) {
+        this.checkDirty = checkDirty;
     }
 
     /**
@@ -105,20 +141,72 @@ public class StencilFactory {
         }
     }
 
-    // TODO Document.
-    public void stencil(Injector injector, URI uri, TransformerHandler handler) throws SAXException {
+    /**
+     * Execute the stencil at the given URI using the given injector to obtain
+     * context objects emitting a document to the given
+     * <code>TransformerHandler</code>. The <code>TransfomerHandler</code> will
+     * be used for SAX content, lexical and DTD output.
+     * 
+     * @param injector
+     *            The injector.
+     * @param uri
+     *            The URI.
+     * @param handler
+     *            The SAX transformer handler.
+     */
+    public void stencil(Injector injector, URI uri, TransformerHandler handler)  {
         stencil(injector, uri, handler, handler, handler);
     }
 
-    // TODO Document.
-    public void stencil(Injector injector, URI uri, ContentHandler content, LexicalHandler lexical, DTDHandler dtd) throws SAXException {
+    /**
+     * Execute the stencil at the given URI using the given injector to obtain
+     * context objects.
+     * <p>
+     * If the content handler is not null, the stencil will be emitted to the
+     * given content, lexical and DTD handlers. If the lexical handler is null
+     * and the content handler is not null, the document will be emitted but
+     * lexical output will be ignored. If the DTD handler is null and the
+     * content handler is not null, the document will be emitted but DTD output
+     * will be ignored.
+     * 
+     * @param injector
+     *            The injector.
+     * @param uri
+     *            The URI.
+     * @param content
+     *            The SAX content handler.
+     * @param lexical
+     *            The SAX lexical handler.
+     * @param dtd
+     *            The SAX DTD handler.
+     */
+    public void stencil(Injector injector, URI uri, ContentHandler content, LexicalHandler lexical, DTDHandler dtd) {
         URI resolved = baseURI.resolve(uri).normalize();
         Page page = stencils.get(resolved);
         if (page == null) {
             page = compile(injector, uri, content, lexical, dtd);
             stencils.put(resolved, page);
+        } else if (checkDirty) {
+            URL url;
+            try {
+                url = getURL(injector, resolved);
+            } catch (MalformedURLException e) {
+                throw new RuntimeException(e);
+            }
+            URLConnection connection;
+            try {
+                connection = url.openConnection();
+            } catch (IOException e) {
+                throw new StencilException(e, "Cannot read [%s].", uri);
+            }
+            if (connection.getLastModified() > page.lastModified) {
+                page = compile(injector, uri, connection, content, lexical, dtd);
+                stencils.put(resolved, page);
+            } else {
+                compile(injector, uri, new Stencil(page, 0), content, lexical, dtd);
+            }
         } else {
-            compile(injector, uri, page.nodes, 0, page, content, lexical, dtd);
+            compile(injector, uri, new Stencil(page, 0), content, lexical, dtd);
         }
     }
     
@@ -192,13 +280,34 @@ public class StencilFactory {
         }
         return null;
     }
-    
-    // TODO Document.
+
+    /**
+     * Determine if the given string is null or a zero length string and
+     * therefore blank for our purposes.
+     * 
+     * @param string
+     *            The string.
+     * @return True if the string is null or a zero length string.
+     */
     private boolean isBlank(String string) {
         return string == null || string.equals("");
     }
-    
-    // TODO Document.
+
+    /**
+     * Resolve the URI into a URL that can be used to open an input stream to
+     * obtain the resource. If a <code>ResourceResolver</code> has been
+     * registered for the protocol of the URI, then the
+     * <code>ResolverResolver</code> is used to obtain the URL. Otherwise, the
+     * URI is converted to a URL using the {@link URI#toURL() URI.toURL} method.
+     * 
+     * @param injector
+     *            The injector.
+     * @param uri
+     *            The URI to resolve.
+     * @return A URL for the URI.
+     * @throws MalformedURLException
+     *             If the URI cannot be converted to a URL.
+     */
     private URL getURL(Injector injector, URI uri) throws MalformedURLException {
         ResourceResolver resourceResolver = resourceResolvers.get(uri.getScheme());
         if (resourceResolver == null) {
@@ -207,25 +316,86 @@ public class StencilFactory {
         return resourceResolver.getURL(injector, uri);
     }
 
-    // TODO Document.
-    private Page compile(Injector injector, URI uri, ContentHandler content, LexicalHandler lexical, DTDHandler dtd) throws SAXException {
+    /**
+     * Compile and execute the stencil indicated by the given URI returning a
+     * stencil page for caching. The injector will be used to obtain context
+     * objects for the stencils.
+     * <p>
+     * If the content handler is not null, the stencil will be emitted to the
+     * given content, lexical and DTD handlers. The events for the lexical
+     * handler will not be emitted if the lexical handler is null. The events
+     * for the DTD handler will not be emitted if the DTD handler is null.
+     * 
+     * @param injector
+     *            The injector.
+     * @param uri
+     *            The stencil URI.
+     * @param content
+     *            The SAX content handler or null if this is just a static
+     *            check.
+     * @param lexical
+     *            The SAX lexical handler.
+     * @param dtd
+     *            The SAX DTD handler.
+     * @return The compiled stencil page.
+     */
+    private Page compile(Injector injector, URI uri, ContentHandler content, LexicalHandler lexical, DTDHandler dtd) {
         // Normalize the absolute URI.
         uri = getBaseURI().resolve(uri).normalize();
         // Load the document.
+        URLConnection connection;
+        try {
+            URL url = getURL(injector, uri);
+            connection = url.openConnection();
+        } catch (IOException e) {
+            throw new StencilException(e, "Cannot read [%s].", uri);
+        }
+        return compile(injector, uri, connection, content, lexical, dtd);
+    }
+
+    /**
+     * Compile and execute the stencil input stream of the given url connnection
+     * obtained from the given url returning a stencil page for caching. The
+     * injector will be used to obtain context objects for the stencils.
+     * <p>
+     * If the content handler is not null, the stencil will be emitted to the
+     * given content, lexical and DTD handlers. The events for the lexical
+     * handler will not be emitted if the lexical handler is null. The events
+     * for the DTD handler will not be emitted if the DTD handler is null.
+     * 
+     * @param injector
+     *            The injector.
+     * @param uri
+     *            The stencil URI.
+     * @param content
+     *            The SAX content handler or null if this is just a static
+     *            check.
+     * @param lexical
+     *            The SAX lexical handler.
+     * @param dtd
+     *            The SAX DTD handler.
+     * @return The compiled stencil page.
+     */
+    private Page compile(Injector injector, URI uri, URLConnection connection, ContentHandler content, LexicalHandler lexical, DTDHandler dtd) {
         List<Object> nodes;
         try {
-            URL url = getURL(injector, uri); 
-            nodes = InOrderDocument.readInOrderDocument(url.openStream());
+            nodes = InOrderDocument.readInOrderDocument(connection.getInputStream());
         } catch (SAXException e) {
             throw new StencilException(e, "Invalid XML in [%s].", uri);
         } catch (IOException e) {
             throw new StencilException(e, "Cannot read [%s].", uri);
         }
-        
-        return compile(injector, uri, nodes, 0, new Page(uri, nodes), content, lexical, dtd);
+        return compile(injector, uri, new Stencil(new Page(uri, connection.getLastModified(), nodes), 0), content, lexical, dtd);
     }
-    
-    public LinkedList<Level> newStack() {
+
+    /**
+     * Create a new in order traversal stack with a single empty root element so
+     * that there is always a level and we don't have to keep checking for an
+     * empty list.
+     * 
+     * @return An empty level stack.
+     */
+    private LinkedList<Level> newStack() {
         LinkedList<Level> stack = new LinkedList<Level>();
         stack.addLast(new Level());
         stack.getLast().hasElement = true;
@@ -387,7 +557,7 @@ public class StencilFactory {
                     }
                 }
                 { // Check for a new evaluation context.
-                    int attribute = resolved.getIndex(STENCIL_URI, "context");
+                    int attribute = resolved.getIndex(STENCIL_URI, "bind");
                     if (attribute != -1) {
                         String context = resolved.getValue(attribute);
                         resolved.removeAttribute(attribute);
@@ -409,7 +579,7 @@ public class StencilFactory {
                 if (inStencilNamespace) {
                     stack.getLast().skip = true;
                     if (localName.equals("class")) {
-                        if (!isText(nodes.get(index + 1))) {
+                        if (!(nodes.get(index + 1) instanceof String)) {
                             throw new StencilException("Cannot load empty import at line [%s] of [%s].", element.line, stencil.page.uri);
                         }
                         Ilk.Box importation;
@@ -561,7 +731,7 @@ public class StencilFactory {
                         LinkedList<Level> subStack = newStack();
                         subStack.getLast().namespaceURIs.putAll(subStencil.namespaceURIs);
                         subStack.getLast().prefixes.putAll(subStencil.prefixes);
-                        index = compile(injector, stack, subStack, subStencil, new Stencil(stencil.page, index + 1), content, lexical, dtd) - 1;
+                        compile(injector, stack, subStack, subStencil, new Stencil(stencil.page, index + 1), content, lexical, dtd);
                         stack.removeLast();
                     }
                 }
@@ -579,7 +749,7 @@ public class StencilFactory {
     }
 
     // TODO Document.
-    private Page compile(Injector injector, URI uri, List<Object> nodes, int offset, Page page, ContentHandler content, LexicalHandler lexical, DTDHandler dtd) throws SAXException {
+    private Page compile(Injector injector, URI uri, Stencil stencil, ContentHandler content, LexicalHandler lexical, DTDHandler dtd) {
         // Stack of state based on document element depth.
         LinkedList<Level> stack = new LinkedList<Level>();
         
@@ -587,17 +757,21 @@ public class StencilFactory {
         stack.addLast(new Level());
         stack.getLast().hasElement = true;
         
-        if (content != null) {
-            content.startDocument();
+        try {
+            if (content != null) {
+                content.startDocument();
+            }
+            
+            compile(injector, stack, newStack(), stencil, new Stencil(), content, lexical, dtd);
+           
+            if (content != null) {
+                content.endDocument();
+            }
+        } catch (SAXException e) {
+            throw new StencilException(e, "Cannot emit stencil [%s].", uri);
         }
         
-        compile(injector, stack, newStack(), new Stencil(page, offset), new Stencil(), content, lexical, dtd);
-       
-        if (content != null) {
-            content.endDocument();
-        }
-
-        return page;
+        return stencil.page;
     }
     
     // TODO Document.
@@ -613,18 +787,13 @@ public class StencilFactory {
                 return prefix.equals("") ? localName : prefix + ':' + localName;
             }
         }
-        throw new StencilException("");
+        throw new StencilException("Cannot find qualified name for " + namespaceURI);
     }
     
     // TODO Document.
-    private static boolean isText(Object object) {
-        return object instanceof String;
-    }
-    
-    // TODO Document.
-    public static AttributesImpl getAttributes(LinkedList<Level> stack, AttributesImpl resolved, Type actual, Object object, int line, URI uri) {
+    private static AttributesImpl getAttributes(LinkedList<Level> stack, AttributesImpl resolved, Type actual, Object object, int line, URI uri) {
         for (int j = 0, stop = resolved.getLength(); j < stop; j++) {
-            if (resolved.getURI(j).equals(STENCIL_URI)) {
+            if (resolved.getURI(j).equals(STENCIL_ATTRIBUTE_URI)) {
                 String value = getString(actual, resolved.getLocalName(j), object, line, uri);
                 if (object != null) {
                     String[] name = resolved.getValue(j).split(":");

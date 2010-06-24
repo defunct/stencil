@@ -20,13 +20,9 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.Result;
 import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.TransformerFactoryConfigurationError;
 import javax.xml.transform.sax.SAXTransformerFactory;
 import javax.xml.transform.sax.TransformerHandler;
 import javax.xml.transform.stream.StreamResult;
-
-import nu.xom.ParsingException;
-import nu.xom.ValidityException;
 
 import org.custommonkey.xmlunit.XMLTestCase;
 import org.custommonkey.xmlunit.XMLUnit;
@@ -36,6 +32,8 @@ import org.xml.sax.SAXException;
 import com.goodworkalan.ilk.Ilk;
 import com.goodworkalan.ilk.inject.Injector;
 import com.goodworkalan.ilk.inject.InjectorBuilder;
+import com.habitsoft.xhtml.dtds.FailingEntityResolver;
+import com.habitsoft.xhtml.dtds.XhtmlEntityResolver;
 
 public class StencilTest extends XMLTestCase {
     /**
@@ -47,7 +45,7 @@ public class StencilTest extends XMLTestCase {
      * @throws TransformerConfigurationException
      *             If for some reason the TransformerHandler cannot be created.
      */
-    public TransformerHandler newTransformerHandler(Result result) throws TransformerConfigurationException, TransformerFactoryConfigurationError {
+    public TransformerHandler newTransformerHandler(Result result) throws TransformerConfigurationException {
         TransformerHandler handler = ((SAXTransformerFactory) TransformerFactory.newInstance()).newTransformerHandler();
         handler.setResult(result);
         return handler;
@@ -55,18 +53,16 @@ public class StencilTest extends XMLTestCase {
     
     @Test
     public void testDocument()
-    throws ValidityException, ParsingException, IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException, TransformerFactoryConfigurationError {
-        XMLUnit.setControlParser(StencilDocumentBuilderFactory.class.getCanonicalName());
-        XMLUnit.setTestParser(StencilDocumentBuilderFactory.class.getCanonicalName());
-
-        final Person person = new Person("Steve", "McQueen");
+    throws IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException {
+        XMLUnit.setControlEntityResolver(new XhtmlEntityResolver(new FailingEntityResolver()));
+        XMLUnit.setTestEntityResolver(new XhtmlEntityResolver(new FailingEntityResolver()));
 
         StencilFactory stencils = new StencilFactory();
         
         InjectorBuilder newInjector = new InjectorBuilder();
         newInjector.module(new InjectorBuilder() {
             protected void build() {
-                instance(person, ilk(Person.class), null);
+                instance(new Person("Steve", "McQueen"), ilk(Person.class), null);
             }
         });
         Injector injector = newInjector.newInjector();
@@ -75,9 +71,9 @@ public class StencilTest extends XMLTestCase {
         StreamResult stream = new StreamResult(out);
         TransformerHandler handler = newTransformerHandler(stream);
         stencils.stencil(injector, URI.create("var.xhtml"), handler);
-        String control1 = slurp(getClass().getResourceAsStream("test/var.out.xhtml"));
+        String control = slurp(getClass().getResourceAsStream("test/var.out.xhtml"));
         String actual = slurp(new ByteArrayInputStream(out.toByteArray()));
-        assertXMLEqual(control1, actual);
+        assertXMLEqual(control, actual);
     }
     
     public String slurp(InputStream in) throws IOException {
@@ -98,9 +94,9 @@ public class StencilTest extends XMLTestCase {
     }
 
     @Test
-    public void testEach() throws ValidityException, ParsingException, IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException, TransformerFactoryConfigurationError {
-        XMLUnit.setControlParser(StencilDocumentBuilderFactory.class.getCanonicalName());
-        XMLUnit.setTestParser(StencilDocumentBuilderFactory.class.getCanonicalName());
+    public void testEach() throws IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException {
+        XMLUnit.setControlEntityResolver(new XhtmlEntityResolver(new FailingEntityResolver()));
+        XMLUnit.setTestEntityResolver(new XhtmlEntityResolver(new FailingEntityResolver()));
 
         final Clique clique = new Clique();
         
@@ -130,9 +126,9 @@ public class StencilTest extends XMLTestCase {
 
     @Test
     public void testIf()
-    throws ValidityException, ParsingException, IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException, TransformerFactoryConfigurationError {
-        XMLUnit.setControlParser(StencilDocumentBuilderFactory.class.getCanonicalName());
-        XMLUnit.setTestParser(StencilDocumentBuilderFactory.class.getCanonicalName());
+    throws IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException {
+        XMLUnit.setControlEntityResolver(new XhtmlEntityResolver(new FailingEntityResolver()));
+        XMLUnit.setTestEntityResolver(new XhtmlEntityResolver(new FailingEntityResolver()));
     
         final Map<String, Person> people = new HashMap<String, Person>();
         people.put("second", new Person("George", "Washington"));
@@ -157,10 +153,10 @@ public class StencilTest extends XMLTestCase {
 
     @Test
     public void testDefault()
-    throws ValidityException, ParsingException, IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException, TransformerFactoryConfigurationError {
-        XMLUnit.setControlParser(StencilDocumentBuilderFactory.class.getCanonicalName());
-        XMLUnit.setTestParser(StencilDocumentBuilderFactory.class.getCanonicalName());
-    
+    throws IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException {
+        XMLUnit.setControlEntityResolver(new XhtmlEntityResolver(new FailingEntityResolver()));
+        XMLUnit.setTestEntityResolver(new XhtmlEntityResolver(new FailingEntityResolver()));
+
         InjectorBuilder newInjector = new InjectorBuilder();
         newInjector.module(new InjectorBuilder() {
             protected void build() {
@@ -182,9 +178,9 @@ public class StencilTest extends XMLTestCase {
 
     @Test
     public void testUnless()
-    throws ValidityException, ParsingException, IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException, TransformerFactoryConfigurationError {
-        XMLUnit.setControlParser(StencilDocumentBuilderFactory.class.getCanonicalName());
-        XMLUnit.setTestParser(StencilDocumentBuilderFactory.class.getCanonicalName());
+    throws IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException {
+        XMLUnit.setControlEntityResolver(new XhtmlEntityResolver(new FailingEntityResolver()));
+        XMLUnit.setTestEntityResolver(new XhtmlEntityResolver(new FailingEntityResolver()));
     
         InjectorBuilder newInjector = new InjectorBuilder();
         newInjector.module(new InjectorBuilder() {
