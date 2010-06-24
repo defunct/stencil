@@ -14,7 +14,7 @@ import com.goodworkalan.stencil.clap.Handler;
 
 /**
  * Unit tests for the CLAP {@link Handler} class.
- *
+ * 
  * @author Alan Gutierrez
  */
 public class ClapTest {

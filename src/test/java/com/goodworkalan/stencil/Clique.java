@@ -5,7 +5,7 @@ import java.util.List;
 
 /**
  * A group of people.
- *
+ * 
  * @author Alan Gutierrez
  */
 public class Clique {

@@ -14,8 +14,6 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.Result;
 import javax.xml.transform.TransformerConfigurationException;
@@ -81,7 +79,16 @@ public class StencilTest extends XMLTestCase {
         String actual = slurp(new ByteArrayInputStream(out.toByteArray()));
         assertXMLEqual(control, actual);
     }
-    
+
+    /**
+     * Slurp the entire input stream into a single string.
+     * 
+     * @param in
+     *            The input stream.
+     * @return The contents of the stream as a string.
+     * @throws IOException
+     *             For any I/O error.
+     */
     public String slurp(InputStream in) throws IOException {
         StringBuilder string = new StringBuilder();
         Reader reader = new InputStreamReader(in);
@@ -92,13 +99,7 @@ public class StencilTest extends XMLTestCase {
         return string.toString();
     }
 
-    public org.w3c.dom.Document load(InputStream in, String uri) throws SAXException, IOException, ParserConfigurationException {
-        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-        dbf.setNamespaceAware(true);
-        DocumentBuilder db = dbf.newDocumentBuilder();
-        return db.parse(in, uri);
-    }
-
+    /** Test each. */
     @Test
     public void testEach() throws IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException {
         XMLUnit.setControlEntityResolver(new XhtmlEntityResolver(new FailingEntityResolver()));
@@ -130,6 +131,7 @@ public class StencilTest extends XMLTestCase {
         assertXMLEqual(control1, actual);
     }
 
+    /** Test if. */
     @Test
     public void testIf()
     throws IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException {
@@ -157,6 +159,7 @@ public class StencilTest extends XMLTestCase {
         assertXMLEqual(control1, actual);
     }
 
+    /** Test default. */
     @Test
     public void testDefault()
     throws IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException {
@@ -182,6 +185,7 @@ public class StencilTest extends XMLTestCase {
         assertXMLEqual(control1, actual);
     }
 
+    /** Test unless. */
     @Test
     public void testUnless()
     throws IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException {
