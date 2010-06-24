@@ -35,6 +35,11 @@ import com.goodworkalan.ilk.inject.InjectorBuilder;
 import com.habitsoft.xhtml.dtds.FailingEntityResolver;
 import com.habitsoft.xhtml.dtds.XhtmlEntityResolver;
 
+/**
+ * Unit tests for the {@link StencilFactory} class.
+ *
+ * @author Alan Gutierrez
+ */
 public class StencilTest extends XMLTestCase {
     /**
      * Create a new transformer handler that records to the given result.
@@ -51,8 +56,9 @@ public class StencilTest extends XMLTestCase {
         return handler;
     }
     
+    /** Test variable assignments. */
     @Test
-    public void testDocument()
+    public void var()
     throws IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException {
         XMLUnit.setControlEntityResolver(new XhtmlEntityResolver(new FailingEntityResolver()));
         XMLUnit.setTestEntityResolver(new XhtmlEntityResolver(new FailingEntityResolver()));

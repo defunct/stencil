@@ -1,8 +1,7 @@
 /* Copyright Alan Gutierrez 2006 */
 package com.goodworkalan.stencil;
 
-public class Address
-{
+public class Address {
     private final String street;
 
     private final String city;
@@ -11,31 +10,26 @@ public class Address
 
     private final String zip;
 
-    public Address(String street, String city, String state, String zip)
-    {
+    public Address(String street, String city, String state, String zip) {
         this.street = street;
         this.city = city;
         this.state = state;
         this.zip = zip;
     }
 
-    public String getStreet()
-    {
+    public String getStreet() {
         return street;
     }
 
-    public String getCity()
-    {
+    public String getCity() {
         return city;
     }
 
-    public String getState()
-    {
+    public String getState() {
         return state;
     }
 
-    public String getZip()
-    {
+    public String getZip() {
         return zip;
     }
 }
