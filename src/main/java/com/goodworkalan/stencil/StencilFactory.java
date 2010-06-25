@@ -57,7 +57,7 @@ public class StencilFactory {
     private URI baseURI;
     
     /** Whether to check if a URI resource is dirty and rebuild the stencil. */
-    private boolean checkDirty = true;
+    private boolean checkDirty;
 
     /** The map of protocols to resource resolvers. */
     private final Map<String, ResourceResolver> resourceResolvers = new ConcurrentHashMap<String, ResourceResolver>();

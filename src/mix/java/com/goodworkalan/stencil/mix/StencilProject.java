@@ -28,12 +28,8 @@ public class StencilProject implements ProjectModule {
                     .production("com.github.bigeasy.diffuse/diffuse/0.+1")
                     .production("com.github.bigeasy.ilk/ilk-inject/0.+1")
                     .production("com.github.bigeasy.ilk/ilk-loader/0.+1")
-                    .production("org.slf4j/slf4j-api/1.4.2")
-                    .development("org.slf4j/slf4j-log4j12/1.4.2")
-                    .development("log4j/log4j/1.2.14")
-                    .development("xmlunit/xmlunit/1.2")
                     .development("org.testng/testng-jdk15/5.10")
-                    .development("org.mockito/mockito-core/1.6")
+                    .development("com.github.bigeasy.comfort-io/comfort-io/0.+1")
                     .end()
                 .end()
             .end();

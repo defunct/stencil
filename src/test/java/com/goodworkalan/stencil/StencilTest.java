@@ -2,6 +2,7 @@
 package com.goodworkalan.stencil;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -13,6 +14,7 @@ import java.net.URI;
 
 import org.testng.annotations.Test;
 
+import com.goodworkalan.comfort.io.Files;
 import com.goodworkalan.ilk.inject.Injector;
 import com.goodworkalan.ilk.inject.InjectorBuilder;
 
@@ -24,7 +26,7 @@ import com.goodworkalan.ilk.inject.InjectorBuilder;
  */
 public class StencilTest {
     /** Test a do nothing template. */
-//    @Test
+    @Test
     public void nothing() throws IOException {
         StencilFactory stencils = new StencilFactory();
         stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil").getAbsoluteFile().toURI());
@@ -399,6 +401,38 @@ public class StencilTest {
         stencils.stencil(injector, URI.create("stencil-indent.txt"), output);
         String control = slurp(getClass().getResourceAsStream("stencil-indent.out.txt"));
         String actual = output.toString();
+        assertEquals(actual, control);
+    }
+    
+    /** Test check dirty. */
+    @Test
+    public void checkDirty() throws IOException, InterruptedException {
+        StencilFactory stencils = new StencilFactory();
+        File tests = Files.file(new File("."), "src", "test", "resources", "com", "goodworkalan", "stencil");
+        StringWriter output = new StringWriter();
+        stencils.setBaseURI(tests.getAbsoluteFile().toURI());
+        stencils.stencil(new InjectorBuilder().newInjector(), URI.create("nothing.txt"), output);
+        String control = slurp(getClass().getResourceAsStream("nothing.txt"));
+        String actual = output.toString();
+        assertEquals(actual, control);
+        output = new StringWriter();
+        stencils.stencil(new InjectorBuilder().newInjector(), URI.create("nothing.txt"), output);
+        control = slurp(getClass().getResourceAsStream("nothing.txt"));
+        actual = output.toString();
+        assertEquals(actual, control);
+        stencils.setCheckDirty(true);
+        assertTrue(stencils.isCheckDirty());
+        output = new StringWriter();
+        stencils.stencil(new InjectorBuilder().newInjector(), URI.create("nothing.txt"), output);
+        control = slurp(getClass().getResourceAsStream("nothing.txt"));
+        actual = output.toString();
+        assertEquals(actual, control);
+        Files.touch(Files.file(tests, "nothing.txt"));
+        Thread.sleep(1000);
+        output = new StringWriter();
+        stencils.stencil(new InjectorBuilder().newInjector(), URI.create("nothing.txt"), output);
+        control = slurp(getClass().getResourceAsStream("nothing.txt"));
+        actual = output.toString();
         assertEquals(actual, control);
     }
 }

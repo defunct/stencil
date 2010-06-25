@@ -59,17 +59,4 @@ class Stencil {
         this.index = index;
         this.count = count;
     }
-
-    /**
-     * Create a stencil that is a copy of the given stencil.
-     * 
-     * @param stencil
-     *            The stencil to copy.
-     */
-    public Stencil(Stencil stencil) {
-        this.page = stencil.page;
-        this.index = stencil.index;
-        this.after = stencil.after;
-        this.count = stencil.count;
-    }
 }
