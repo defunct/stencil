@@ -47,6 +47,10 @@ class Level {
     /** Whether this level was created for a stencil invocation. */
     public boolean isStencil;
     
+    public int indent;
+    
+    public boolean pre;
+    
     /** The map of stencils imported by this element. */
     public Map<QName, Stencil> stencils = new HashMap<QName, Stencil>();
     

@@ -23,7 +23,6 @@ public class StencilProject implements ProjectModule {
                 .produces("com.github.bigeasy.stencil/stencil/0.1")
                 .depends()
                     .production("javax.servlet/servlet-api/2.5")
-                    .production("com.habitsoft/html-dtd-cache/1.0")
                     .production("com.github.bigeasy.reflective/reflective-getter/0.+1")
                     .production("com.github.bigeasy.permeate/permeate/0.+1")
                     .production("com.github.bigeasy.diffuse/diffuse/0.+1")

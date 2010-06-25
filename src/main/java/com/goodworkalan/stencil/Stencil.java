@@ -26,7 +26,7 @@ class Stencil {
      * Create an empty stencil.
      */
     public Stencil() {
-        this(new Page(null, 0, Collections.emptyList()), 0);
+        this(new Page(null, 0, Collections.<String>emptyList()), 0);
     }
 
     /**

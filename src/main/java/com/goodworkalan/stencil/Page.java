@@ -20,10 +20,10 @@ class Page {
     /** The last modified time of the resource. */
     public final long lastModified;
 
-    /** The list of in order document events. */
-    public final List<Object> nodes;
+    /** The list of lines in the document. */
+    public final List<String> lines;
 
-    /** The map of qualified stencil names to node list indicies. */
+    /** The map of qualified stencil names to line indexes. */
     public final Map<QName, Stencil> stencils = new HashMap<QName, Stencil>();
 
     /**
@@ -33,12 +33,12 @@ class Page {
      *            The URI of the XML document.
      * @param lastModified
      *            The last modified time of the resource.
-     * @param nodes
-     *            The list of nodes.
+     * @param lines
+     *            The list of lines in the document.
      */
-    public Page(URI uri, long lastModified, List<Object> nodes) {
+    public Page(URI uri, long lastModified, List<String> lines) {
         this.uri = uri;
-        this.nodes = nodes;
+        this.lines = lines;
         this.lastModified = lastModified;
     }
 }
