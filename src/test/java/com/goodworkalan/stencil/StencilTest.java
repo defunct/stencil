@@ -258,6 +258,82 @@ public class StencilTest {
         assertEquals(actual, control);
     }
 
+    /** Test indented if with blank lines. */
+    @Test
+    public void ifIndentWhitespace() throws IOException {
+        InjectorBuilder newInjector = new InjectorBuilder();
+        newInjector.module(new InjectorBuilder() {
+            protected void build() {
+                instance(new Person("George", "Washington"), ilk(Person.class), null);
+            }
+        });
+        StencilFactory stencils = new StencilFactory();
+        stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil").getAbsoluteFile().toURI());
+        Injector injector = newInjector.newInjector();
+        StringWriter output = new StringWriter();
+        stencils.stencil(injector, URI.create("if-indent-whitespace.txt"), output);
+        String control = slurp(getClass().getResourceAsStream("if-indent-whitespace.out.txt"));
+        String actual = output.toString();
+        assertEquals(actual, control);
+    }
+
+    /** Test indented if with blank lines when false. */
+    @Test
+    public void ifIndentWhitespaceFalse() throws IOException {
+        InjectorBuilder newInjector = new InjectorBuilder();
+        newInjector.module(new InjectorBuilder() {
+            protected void build() {
+                instance(new Person(null, "Washington"), ilk(Person.class), null);
+            }
+        });
+        StencilFactory stencils = new StencilFactory();
+        stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil").getAbsoluteFile().toURI());
+        Injector injector = newInjector.newInjector();
+        StringWriter output = new StringWriter();
+        stencils.stencil(injector, URI.create("if-indent-whitespace.txt"), output);
+        String control = slurp(getClass().getResourceAsStream("if-indent-whitespace-false.out.txt"));
+        String actual = output.toString();
+        assertEquals(actual, control);
+    }
+
+    /** Test indented if with indented trailing blank lines. */
+    @Test
+    public void ifIndentTrailingBlank() throws IOException {
+        InjectorBuilder newInjector = new InjectorBuilder();
+        newInjector.module(new InjectorBuilder() {
+            protected void build() {
+                instance(new Person("George", "Washington"), ilk(Person.class), null);
+            }
+        });
+        StencilFactory stencils = new StencilFactory();
+        stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil").getAbsoluteFile().toURI());
+        Injector injector = newInjector.newInjector();
+        StringWriter output = new StringWriter();
+        stencils.stencil(injector, URI.create("if-indent-trailing-blank.txt"), output);
+        String control = slurp(getClass().getResourceAsStream("if-indent-trailing-blank.out.txt"));
+        String actual = output.toString();
+        assertEquals(actual, control);
+    }
+
+    /** Test indented if with indented trailing blank lines when false. */
+    @Test
+    public void ifIndentTrailingBlankFalse() throws IOException {
+        InjectorBuilder newInjector = new InjectorBuilder();
+        newInjector.module(new InjectorBuilder() {
+            protected void build() {
+                instance(new Person(null, "Washington"), ilk(Person.class), null);
+            }
+        });
+        StencilFactory stencils = new StencilFactory();
+        stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil").getAbsoluteFile().toURI());
+        Injector injector = newInjector.newInjector();
+        StringWriter output = new StringWriter();
+        stencils.stencil(injector, URI.create("if-indent-trailing-blank.txt"), output);
+        String control = slurp(getClass().getResourceAsStream("if-indent-trailing-blank-false.out.txt"));
+        String actual = output.toString();
+        assertEquals(actual, control);
+    }
+
  //    /** Test default. */
 //    @Test
 //    public void testDefault()

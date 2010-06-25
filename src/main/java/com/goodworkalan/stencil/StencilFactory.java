@@ -463,13 +463,31 @@ public class StencilFactory {
 //        boolean hasNested = false;
 //        boolean hasUnnamedNested = false;
         int index = stencil.index;
-        for (int stop = lines.size(), height = stack.size(); index < stop; index++) {
-            String line = lines.get(index);
+        int stop = lines.size();
+        List<String> blankLines = new ArrayList<String>();
+        while (index < stop) {
+            String line = lines.get(index++);
             int indent = indent(line);
             if (indent < stack.getLast().indent) {
-                if (stack.getLast().command.equals("If")) {
+                if (isWhitespace(line)) {
+                    blankLines.add(line);
+                    continue;
+                } else if (stack.getLast().command.equals("If")) {
                     stack.removeLast();
+                    if (!stack.getLast().skip) {
+                        for (String blankLine : blankLines) {
+                            println(output, blankLine);
+                        }
+                    }
+                    blankLines.clear();
                 }
+            } else {
+                if (!stack.getLast().skip) {
+                    for (String blankLine : blankLines) {
+                        println(output, blankLine);
+                    }
+                }
+                blankLines.clear();
             }
             String after = line;
             int count = 0;
@@ -498,7 +516,7 @@ public class StencilFactory {
                     try {
                         stack.getLast().ilk = IlkLoader.fromString(Thread.currentThread().getContextClassLoader(), payload, Collections.<String, Class<?>>emptyMap());
                     } catch (ClassNotFoundException e) {
-                        throw new StencilException(e, "Cannot load type [%s] at line [%s] of [%s].", payload, index + 1, stencil.page.uri);
+                        throw new StencilException(e, "Cannot load type [%s] at line [%s] of [%s].", payload, index, stencil.page.uri);
                     }
                     if (output != null) {
                         Ilk.Key key = stack.getLast().ilk.key.get(0);
@@ -506,15 +524,15 @@ public class StencilFactory {
                     }
                 } else if (name.equals("Get")) {
                     if (isBlank(payload)) {
-                        throw new StencilException("Missing Get path at line [%s] of [%s].", index + 1, stencil.page.uri);
+                        throw new StencilException("Missing Get path at line [%s] of [%s].", index, stencil.page.uri);
                     }
-                    String value = getString(ilkType, payload, getSelected(stack), index + 1, stencil.page.uri);
+                    String value = getString(ilkType, payload, getSelected(stack), index, stencil.page.uri);
                     if (!stack.getLast().skip ) {
                         print(output, value);
                     }
                 } else if (name.equals("If") || name.equals("Unless")) {
                     if (!isBlank(payload)) {
-                        Ilk.Box value = get(ilkType, payload, getSelected(stack), index + 1, stencil.page.uri);
+                        Ilk.Box value = get(ilkType, payload, getSelected(stack), index, stencil.page.uri);
                         boolean condition = false;
                         if (value != null) {
                             Class<?> rawClass = getRawClass(value.key.type);
