@@ -483,9 +483,11 @@ public class StencilFactory {
                     indent = indent(before);
                 }
                 after = command.group(4);
-                if ((count != 0 || !isWhitespace(before)) && !stack.getLast().skip) {
+                if (count != 0 || !isWhitespace(before)) {
                     terminal = after;
-                    print(output, before);
+                    if (!stack.getLast().skip) {
+                        print(output, before);
+                    }
                 }
                 String name = command.group(2).trim();
                 String payload = command.group(3);

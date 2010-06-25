@@ -123,7 +123,65 @@ public class StencilTest {
         String actual = output.toString();
         assertEquals(actual, control);
     }
-//
+
+    /** Test inline if with content after the closing if. */
+    @Test
+    public void ifTrailing() throws IOException {
+        InjectorBuilder newInjector = new InjectorBuilder();
+        newInjector.module(new InjectorBuilder() {
+            protected void build() {
+                instance(new Person("George", "Washington"), ilk(Person.class), null);
+            }
+        });
+        StencilFactory stencils = new StencilFactory();
+        stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil").getAbsoluteFile().toURI());
+        Injector injector = newInjector.newInjector();
+        StringWriter output = new StringWriter();
+        stencils.stencil(injector, URI.create("if-trailing.txt"), output);
+        String control = slurp(getClass().getResourceAsStream("if-trailing.out.txt"));
+        String actual = output.toString();
+        assertEquals(actual, control);
+    }
+    
+    /** Test inline if with content before the opening if. */
+    @Test
+    public void ifLeading() throws IOException {
+        InjectorBuilder newInjector = new InjectorBuilder();
+        newInjector.module(new InjectorBuilder() {
+            protected void build() {
+                instance(new Person("George", "Washington"), ilk(Person.class), null);
+            }
+        });
+        StencilFactory stencils = new StencilFactory();
+        stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil").getAbsoluteFile().toURI());
+        Injector injector = newInjector.newInjector();
+        StringWriter output = new StringWriter();
+        stencils.stencil(injector, URI.create("if-leading.txt"), output);
+        String control = slurp(getClass().getResourceAsStream("if-leading.out.txt"));
+        String actual = output.toString();
+        assertEquals(actual, control);
+    }
+
+    /** Test inline if with false value for if. */
+    @Test
+    public void ifFalse() throws IOException {
+        InjectorBuilder newInjector = new InjectorBuilder();
+        newInjector.module(new InjectorBuilder() {
+            protected void build() {
+                instance(new Person(null, "Washington"), ilk(Person.class), null);
+            }
+        });
+        StencilFactory stencils = new StencilFactory();
+        stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil").getAbsoluteFile().toURI());
+        Injector injector = newInjector.newInjector();
+        StringWriter output = new StringWriter();
+        stencils.stencil(injector, URI.create("if-false.txt"), output);
+        String control = slurp(getClass().getResourceAsStream("if-false.out.txt"));
+        String actual = output.toString();
+        assertEquals(actual, control);
+    }
+
+
 //    /** Test default. */
 //    @Test
 //    public void testDefault()

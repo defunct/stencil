@@ -1,0 +1,2 @@
+@Bind(com.goodworkalan.stencil.Person)
+You will not see@If(firstName)something@If because there is no first name.
