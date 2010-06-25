@@ -190,10 +190,10 @@ public class StencilFactory {
      *            The stack.
      * @return The value.
      */
-    private Object getSelected(LinkedList<Level> stack) {
-        ListIterator<Level> iterator = stack.listIterator(stack.size());
+    private <T> Object getSelected(LinkedList<Level<T>> stack) {
+        ListIterator<Level<T>> iterator = stack.listIterator(stack.size());
         while (iterator.hasPrevious()) {
-            Level level = iterator.previous();
+            Level<T> level = iterator.previous();
             if (level.instance != null) {
                 return level.instance.object;
             }
@@ -209,10 +209,10 @@ public class StencilFactory {
      *            The stack.
      * @return The boxed type of the context object.
      */
-    private Ilk.Box getContext(LinkedList<Level> stack) {
-        ListIterator<Level> iterator = stack.listIterator(stack.size());
+    private <T> Ilk.Box getContext(LinkedList<Level<T>> stack) {
+        ListIterator<Level<T>> iterator = stack.listIterator(stack.size());
         while (iterator.hasPrevious()) {
-            Level level = iterator.previous();
+            Level<T> level = iterator.previous();
             if (level.ilk != null) {
                 return level.ilk;
             }
@@ -229,10 +229,10 @@ public class StencilFactory {
      *            The qualified name of the stencil.
      * @return The boxed type of the context object.
      */
-    private Stencil getStencil(LinkedList<Level> stack, QName qName) {
-        ListIterator<Level> iterator = stack.listIterator(stack.size());
+    private <T> Stencil getStencil(LinkedList<Level<T>> stack, QName qName) {
+        ListIterator<Level<T>> iterator = stack.listIterator(stack.size());
         while (iterator.hasPrevious()) {
-            Level level = iterator.previous();
+            Level<T> level = iterator.previous();
             Stencil stencil = level.stencils.get(qName);
             if (stencil != null) {
                 return stencil;
@@ -358,10 +358,9 @@ public class StencilFactory {
      * 
      * @return An empty level stack.
      */
-    private LinkedList<Level> newStack() {
-        LinkedList<Level> stack = new LinkedList<Level>();
-        stack.addLast(new Level());
-        stack.getLast().hasElement = true;
+    private <T> LinkedList<Level<T>> newStack() {
+        LinkedList<Level<T>> stack = new LinkedList<Level<T>>();
+        stack.addLast(new Level<T>());
         return stack;
     }
     
@@ -432,7 +431,7 @@ public class StencilFactory {
      * @throws SAXException
      *             For any error raised by the parser.
      */
-    private <T> int compile(Injector injector, LinkedList<Level> stack, LinkedList<Level> stencilStack, Stencil stencil, Stencil nested, Writer output)
+    private <T> int compile(Injector injector, LinkedList<Level<T>> stack, LinkedList<Level<T>> stencilStack, Stencil stencil, Stencil nested, Writer output)
     throws IOException {
         List<String> lines = stencil.page.lines;
         int index = stencil.index;
@@ -523,9 +522,11 @@ public class StencilFactory {
                             condition = !condition;
                         }
                         int lastIndent = stack.getLast().indent;
-                        stack.addLast(new Level());
-                        stack.getLast().skip = !condition;
-                        stack.getLast().met = !condition;
+                        stack.addLast(new Level<T>());
+                        if (output != null) {
+                            stack.getLast().skip = !condition;
+                            stack.getLast().met = !condition;
+                        }
                         stack.getLast().command = name;
                         if (terminal == null && indent > lastIndent) {
                             stack.getLast().indent = indent;
@@ -540,7 +541,47 @@ public class StencilFactory {
                     if (!"If".equals(stack.getLast().command)) {
                         throw new IllegalStateException();
                     }
-                    stack.getLast().skip = !stack.getLast().met;
+                    stack.getLast().skip = output != null && !stack.getLast().met;
+                } else if (name.equals("Each")) {
+                    if (isBlank(payload)) {
+                        if (!"Each".equals(stack.getLast().command)) {
+                            throw new StencilException("End Each encountered without Each at line [%s] of [%s].", index, stencil.page.uri);
+                        }
+                        if (output == null || !stack.getLast().each.hasNext()) {
+                            stack.removeLast();
+                        } else {
+                            stack.getLast().instance = stack.getLast().actualizer.actual().box(stack.getLast().each.next());
+                            index = stack.getLast().eachIndex;
+                            after = stack.getLast().eachAfter;
+                        }
+                    } else {
+                        Ilk.Box value = get(ilkType, payload, getSelected(stack), index, stencil.page.uri);
+                        if (!Collection.class.isAssignableFrom(getRawClass(value.key.type))) {
+                            throw new StencilException("Missing path attribute for each at line [%s] of [%s].", index, stencil.page.uri);
+                        }
+                        stack.addLast(new Level<T>());
+                        stack.getLast().actualizer = new Actualizer<T>(value.key.get(0).type);
+                        stack.getLast().command = name;
+                        stack.getLast().ilk = stack.getLast().actualizer.actual().box();
+                        if (output != null) {
+                            stack.getLast().each = stack.getLast().actualizer.collection(value).iterator();
+                            if (stack.getLast().each.hasNext()) {
+                                stack.getLast().instance = stack.getLast().actualizer.actual().box(stack.getLast().each.next());
+                                stack.getLast().eachIndex = index;
+                                stack.getLast().eachAfter = after;
+                            } else {
+                                stack.getLast().skip = true;
+                            }
+                        }
+                    }
+                } else if (name.equals("Separator")) {
+                    if (payload.equals("")) {
+                        
+                    } else {
+                        if (stack.getLast().each.hasNext()) {
+                            print(output, payload);
+                        }
+                    }
                 }
                 if (after.trim().length() == 0) {
                     break;
@@ -564,16 +605,15 @@ public class StencilFactory {
     }
 
     // TODO Document.
-    private Page compile(Injector injector, URI uri, Stencil stencil, Writer output) {
+    private <T> Page compile(Injector injector, URI uri, Stencil stencil, Writer output) {
         // Stack of state based on document element depth.
-        LinkedList<Level> stack = new LinkedList<Level>();
+        LinkedList<Level<T>> stack = new LinkedList<Level<T>>();
         
         // Add a bogus top element to forgo empty stack tests.
-        stack.addLast(new Level());
-        stack.getLast().hasElement = true;
+        stack.addLast(new Level<T>());
         
         try {
-            compile(injector, stack, newStack(), stencil, new Stencil(), output);
+            compile(injector, stack, this.<T>newStack(), stencil, new Stencil(), output);
         } catch (IOException e) {
             throw new StencilException(e, "Cannot emit stencil [%s].", uri);
         }
@@ -627,24 +667,5 @@ public class StencilFactory {
     // TODO Document.
     private static <T> Ilk.Box enbox(T object, Type type) {
         return new Ilk<T>(){}.assign(new Ilk<T>(){}, type).box(object);
-    }
-    
-    // TODO Document.
-    private static class Actualizer<T> {
-        private Ilk<T> ilk;
-        private final Type type;
-
-        public Actualizer(Type type) {
-            this.ilk = new Ilk<T>(){};
-            this.type = type;
-        }
-        
-        public Ilk<T> actual() {
-            return ilk.assign(ilk, type);
-        }
-        
-        public Collection<T> collection(Ilk.Box box) {
-            return box.cast(new Ilk<Collection<T>>(){}.assign(ilk, type));
-        }
     }
 }

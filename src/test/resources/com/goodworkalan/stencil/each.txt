@@ -1,0 +1,2 @@
+@Bind(com.goodworkalan.stencil.Clique)
+@Each(people)@Get(firstName)@Separator(, )@Each

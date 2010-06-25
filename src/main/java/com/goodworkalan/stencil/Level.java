@@ -2,6 +2,7 @@ package com.goodworkalan.stencil;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -15,22 +16,9 @@ import com.goodworkalan.ilk.Ilk;
  *
  * @author Alan Gutierrez
  */
-class Level {
-    /**
-     * Whether a start element node has been encountered. Prior to encountering
-     * a start element node, the node list may contain namespace mapping nodes.
-     * When a namespace mapping node is encountered and the current level
-     * already has an element, it means that we need to push a new level onto
-     * the stack to record the namespace delcarations that come just before a
-     * start element event.
-     */
-    public boolean hasElement;
-
+class Level<T> {
     /** Whether to skip forwarding events to the transformer handler. */
     public boolean skip;
-    
-    /** Whether the parent is a choose element. */ 
-    public boolean choose;
     
     /** The type of context in a box. */
     public Ilk.Box ilk;
@@ -48,6 +36,14 @@ class Level {
     public String command;
     
     public boolean pre;
+    
+    public int eachIndex;
+    
+    public String eachAfter;
+
+    Iterator<T> each = null;
+    
+    Actualizer<T> actualizer = null;
     
     /** The map of stencils imported by this element. */
     public Map<QName, Stencil> stencils = new HashMap<QName, Stencil>();
