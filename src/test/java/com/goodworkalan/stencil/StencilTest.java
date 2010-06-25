@@ -182,6 +182,43 @@ public class StencilTest {
     }
 
 
+    /** Test block if. */
+    @Test
+    public void ifBlock() throws IOException {
+        InjectorBuilder newInjector = new InjectorBuilder();
+        newInjector.module(new InjectorBuilder() {
+            protected void build() {
+                instance(new Person("George", "Washington"), ilk(Person.class), null);
+            }
+        });
+        StencilFactory stencils = new StencilFactory();
+        stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil").getAbsoluteFile().toURI());
+        Injector injector = newInjector.newInjector();
+        StringWriter output = new StringWriter();
+        stencils.stencil(injector, URI.create("if-block.txt"), output);
+        String control = slurp(getClass().getResourceAsStream("if-block.out.txt"));
+        String actual = output.toString();
+        assertEquals(actual, control);
+    }
+
+    /** Test block if. */
+    @Test
+    public void ifBlockFalse() throws IOException {
+        InjectorBuilder newInjector = new InjectorBuilder();
+        newInjector.module(new InjectorBuilder() {
+            protected void build() {
+                instance(new Person(null, "Washington"), ilk(Person.class), null);
+            }
+        });
+        StencilFactory stencils = new StencilFactory();
+        stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil").getAbsoluteFile().toURI());
+        Injector injector = newInjector.newInjector();
+        StringWriter output = new StringWriter();
+        stencils.stencil(injector, URI.create("if-block.txt"), output);
+        String control = slurp(getClass().getResourceAsStream("if-block-false.out.txt"));
+        String actual = output.toString();
+        assertEquals(actual, control);
+    }
 //    /** Test default. */
 //    @Test
 //    public void testDefault()
