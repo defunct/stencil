@@ -1,0 +1,4 @@
+@Bind(com.goodworkalan.stencil.Person)
+    @If(firstName)
+    You will see this line if there is a first name.
+You will always see this line.

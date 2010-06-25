@@ -72,7 +72,7 @@ public class StencilTest {
         }
         return string.toString();
     }
-//
+
 //    /** Test each. */
 //    @Test
 //    public void testEach() throws IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException {
@@ -219,7 +219,46 @@ public class StencilTest {
         String actual = output.toString();
         assertEquals(actual, control);
     }
-//    /** Test default. */
+
+    /** Test block if. */
+    @Test
+    public void ifIndent() throws IOException {
+        InjectorBuilder newInjector = new InjectorBuilder();
+        newInjector.module(new InjectorBuilder() {
+            protected void build() {
+                instance(new Person("George", "Washington"), ilk(Person.class), null);
+            }
+        });
+        StencilFactory stencils = new StencilFactory();
+        stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil").getAbsoluteFile().toURI());
+        Injector injector = newInjector.newInjector();
+        StringWriter output = new StringWriter();
+        stencils.stencil(injector, URI.create("if-indent.txt"), output);
+        String control = slurp(getClass().getResourceAsStream("if-indent.out.txt"));
+        String actual = output.toString();
+        assertEquals(actual, control);
+    }
+
+    /** Test block if. */
+    @Test
+    public void ifIndentFalse() throws IOException {
+        InjectorBuilder newInjector = new InjectorBuilder();
+        newInjector.module(new InjectorBuilder() {
+            protected void build() {
+                instance(new Person(null, "Washington"), ilk(Person.class), null);
+            }
+        });
+        StencilFactory stencils = new StencilFactory();
+        stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil").getAbsoluteFile().toURI());
+        Injector injector = newInjector.newInjector();
+        StringWriter output = new StringWriter();
+        stencils.stencil(injector, URI.create("if-indent.txt"), output);
+        String control = slurp(getClass().getResourceAsStream("if-indent-false.out.txt"));
+        String actual = output.toString();
+        assertEquals(actual, control);
+    }
+
+ //    /** Test default. */
 //    @Test
 //    public void testDefault()
 //    throws IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException {

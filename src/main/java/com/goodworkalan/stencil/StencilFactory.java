@@ -464,9 +464,13 @@ public class StencilFactory {
 //        boolean hasUnnamedNested = false;
         int index = stencil.index;
         for (int stop = lines.size(), height = stack.size(); index < stop; index++) {
-            boolean inline = true;
-            int indent = 0;
             String line = lines.get(index);
+            int indent = indent(line);
+            if (indent < stack.getLast().indent) {
+                if (stack.getLast().command.equals("If")) {
+                    stack.removeLast();
+                }
+            }
             String after = line;
             int count = 0;
             String terminal = null;
@@ -479,9 +483,6 @@ public class StencilFactory {
                     break;
                 }
                 String before = command.group(1);
-                if (count == 0) {
-                    indent = indent(before);
-                }
                 after = command.group(4);
                 if (count != 0 || !isWhitespace(before)) {
                     terminal = after;
@@ -530,9 +531,13 @@ public class StencilFactory {
                         if (name.equals("Unless")) {
                             condition = !condition;
                         }
+                        int lastIndent = stack.getLast().indent;
                         stack.addLast(new Level());
                         stack.getLast().skip = !condition;
                         stack.getLast().command = name;
+                        if (terminal == null && indent > lastIndent) {
+                            stack.getLast().indent = indent;
+                        }
                     } else {
                         if (!name.equals(stack.getLast().command)) {
                             throw new IllegalStateException();
