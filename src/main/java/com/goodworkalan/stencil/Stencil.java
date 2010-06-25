@@ -1,6 +1,5 @@
 package com.goodworkalan.stencil;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,13 +25,6 @@ class Stencil {
 
     /** The prefixes declared when the stencil was declared. */
     public Map<String, String> prefixes = new HashMap<String, String>();
-
-    /**
-     * Create an empty stencil.
-     */
-    public Stencil() {
-        this(new Page(null, 0, Collections.<String>emptyList()), null, 0, 0);
-    }
 
     /**
      * Create a stencil using the nodes at the given index in the given list of

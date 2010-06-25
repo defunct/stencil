@@ -1,2 +1,2 @@
-@Import(utility.txt Util)
+@Import(Util => utility.txt)
 @Util.Greet()@How(Hello)@Who(World)@Util.Greet

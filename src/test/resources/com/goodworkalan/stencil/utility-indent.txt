@@ -1,0 +1,10 @@
+@Stencil(Structure)
+<html>
+<head>
+    @Nested(Head)
+</head>
+<body>
+    @Nested(Body)
+</body>
+</html>
+@Stencil

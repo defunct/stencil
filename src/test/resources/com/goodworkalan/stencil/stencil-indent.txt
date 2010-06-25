@@ -1,0 +1,6 @@
+@Import(Util => utility-indent.txt)
+@Util.Structure
+    @Head
+    This is the head.
+    @Body
+    This is the body.

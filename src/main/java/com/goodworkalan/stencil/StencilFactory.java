@@ -415,17 +415,13 @@ public class StencilFactory {
      *            The stencil.
      * @param nested
      *            The nested content.
-     * @param content
-     *            The SAX content handler.
-     * @param lexical
-     *            The SAX lexical handler.
-     * @param dtd
-     *            The SAX DTD handler.
+     * @param output
+     *            The writer.
      * @return The index of the node after the last node processed.
      * @throws SAXException
      *             For any error raised by the parser.
      */
-    private <T> Stencil[] compile(Injector injector, LinkedList<Level<T>> stack, String blockName, Stencil stencil, Stencil nested, Writer output)
+    private <T> Stencil[] compile(Injector injector, LinkedList<Level<T>> stack, Stencil stencil, Stencil nested, String blockName, int indent, Writer output)
     throws IOException {
         List<String> lines = stencil.page.lines;
         int index = stencil.index;
@@ -434,6 +430,7 @@ public class StencilFactory {
         String after = stencil.after;
         int count = stencil.count;
         int blockCount = 0;
+        Stencil current = null;
         LINES: while (after != null || index < stop) {
             // Bothers me that I can't find a way to put the initialization
             // block before the while and remove the test for null after,
@@ -445,7 +442,6 @@ public class StencilFactory {
             // pass through the list of lines, we're jumping, not within this
             // one method, but definitely jumping around in the list of lines,
             // so we may as well make it readable.
-            int indent = 0;
             String line; 
             if (after == null) {
                 line = lines.get(index++);
@@ -478,6 +474,7 @@ public class StencilFactory {
             }
             String terminal = null;
             for (;;) {
+                current = new Stencil(stencil.page, after, index, count);
                 Matcher command = COMMAND.matcher(after);
                 if (!command.lookingAt()) {
                     if (count == 0) {
@@ -502,6 +499,7 @@ public class StencilFactory {
                 Ilk.Box ilk = getContext(stack);
                 Type ilkType = ilk == null ? null : ilk.key.get(0).type;
                 count++;
+                Stencil subStencil = getStencil(stack, name);
                 if (name.equals("Bind")) {
                     try {
                         stack.getLast().ilk = IlkLoader.fromString(Thread.currentThread().getContextClassLoader(), payload, Collections.<String, Class<?>>emptyMap());
@@ -607,54 +605,67 @@ public class StencilFactory {
                         }
                     }
                 } else if (name.equals("Import")) {
-                    String[] importation = payload.split("\\s+");
+                    String[] importation = payload.split("\\s*=>\\s*");
                     URI uri;
                     try {
-                        uri = new URI(importation[0]);
+                        uri = new URI(importation[1]);
                     } catch (URISyntaxException e) {
                         throw new StencilException(e, "Malformed import URI [%s] at line [%d] of [%s].", index, stencil.page.uri);
                     }
-                    String alias = importation[1];
+                    String alias = importation[0];
                     for (Map.Entry<String, Stencil> entry : compile(injector, uri, null).stencils.entrySet()) {
                         stack.getLast().stencils.put(alias + "." + entry.getKey(), entry.getValue());
                     }
                 } else if (name.equals("Stencil")) {
-                    stack.addLast(new Level<T>());
-                    stack.getLast().command = name;
-                    stencil.page.stencils.put(payload, new Stencil(stencil.page, after, index, count));
-                } else if (name.equals("Nested")) {
-                    if (nested != null) {
-                        nested = compile(injector, stack, payload, nested, null, output)[0];
-                    }
-                } else if (blockName != null) {
-                    if (!blockName.equals(name)) {
-                        throw new StencilException("Exected nested block [%s] missing at line [%d] of [%s].", blockName, index, stencil.page.uri);
-                    }
-                    if (blockCount == 0) {
-                        if (payload != null) {
-                            print(output, payload);
-                            return new Stencil[] { new Stencil(stencil.page, after, index, count), null };
-                        }
-                        stack.addLast(new Level<T>());
-                        stack.getLast().command = name;
-                    } else {
-                        return new Stencil[] { new Stencil(stencil.page, after, index, count), null };
-                    }
-                } else {
-                    if (name.equals(stack.getLast().command) && bracket.equals("!")) {
+                    if (bracket.equals("!")) {
                         stack.removeLast();
                     } else {
-                        Stencil subStencil = getStencil(stack, name);
+                        stack.addLast(new Level<T>());
+                        stack.getLast().command = name;
+                        stencil.page.stencils.put(payload, new Stencil(stencil.page, after, index, count));
+                    }
+                } else if (name.equals("Nested")) {
+                    if (nested != null) {
+                        nested = compile(injector, stack, nested, null, payload, indent, output)[0];
+                    }
+                } else if (subStencil != null) {
+                    if (name.equals(stack.getLast().command) && bracket.equals("!")) {
+                        stack.removeLast();
+                    } else { 
                         if (subStencil == null) {
-                            throw new StencilException("Cannot find Stencil [%s] at line [%d] of [%s].", name, index, stencil.page.uri);
+                            if (payload == null) {
+                                throw new StencilException("Cannot find Stencil [%s] at line [%d] of [%s].", name, index, stencil.page.uri);
+                            }
+                            return new Stencil[] { current, null };
                         }
-                        Stencil result = compile(injector, stack, null, subStencil, new Stencil(stencil.page, after, index, count), output)[1];
+                        Stencil result = compile(injector, stack, subStencil, new Stencil(stencil.page, after, index, count), null, indent, output)[1];
                         stack.addLast(new Level<T>());
                         stack.getLast().command = name;
                         after = result.after;
                         count = result.count;
                         index = result.index;
                         continue LINES;
+                    }
+                } else if (blockName != null) {
+                    if (blockCount == 0) {
+                        if (!blockName.equals(name)) {
+                            throw new StencilException("Exected nested block [%s] missing at line [%d] of [%s].", blockName, index, stencil.page.uri);
+                        }
+                        blockCount++;
+                        if (payload != null) {
+                            print(output, payload);
+                            return new Stencil[] { new Stencil(stencil.page, after, index, count), null };
+                        }
+                        int lastIndent = stack.getLast().indent;
+                        stack.addLast(new Level<T>());
+                        stack.getLast().command = name;
+                        if (terminal == null && indent > lastIndent) {
+                            stack.getLast().indent = indent;
+                        } else {
+                            terminal = after;
+                        }
+                    } else if (!blockName.equals(name)){
+                        return new Stencil[] { new Stencil(stencil.page, after, index, count), null };
                     }
                 }
                 if (after.trim().length() == 0) {
@@ -678,7 +689,25 @@ public class StencilFactory {
         return true;
     }
 
-    // TODO Document.
+    /**
+     * Compile the given stencil located at the given URI. If the output writer
+     * is null, the compilation is a static analysis, all branches will be
+     * checked for type safety.
+     * 
+     * @param <T>
+     *            Type variable used for variable substitution.
+     * @param injector
+     *            The injector.
+     * @param uri
+     *            The uri of the stencil.
+     * @param stencil
+     *            The stencil.
+     * @param nested
+     *            The nested content.
+     * @param output
+     *            The output writer or null if this is a static analysis.
+     * @return A page containing the lines and stencils found in the stencil.
+     */
     private <T> Page compile(Injector injector, URI uri, Stencil stencil, Writer output) {
         // Stack of state based on document element depth.
         LinkedList<Level<T>> stack = new LinkedList<Level<T>>();
@@ -687,7 +716,7 @@ public class StencilFactory {
         stack.addLast(new Level<T>());
         
         try {
-            compile(injector, stack, null, stencil, null, output);
+            compile(injector, stack, stencil, null, null, 0, output);
         } catch (IOException e) {
             throw new StencilException(e, "Cannot emit stencil [%s].", uri);
         }
@@ -695,13 +724,43 @@ public class StencilFactory {
         return stencil.page;
     }
 
-    // TODO Document.
+    /**
+     * Get the string value of the object found at the given path, checking that
+     * the path actually exists relative to the given object.
+     * 
+     * @param actual
+     *            The type of the object.
+     * @param expression
+     *            The path to evaluate.
+     * @param object
+     *            The object.
+     * @param line
+     *            The line number where the path was read.
+     * @param uri
+     *            The URI from which the path was read.
+     * @return The string value of the given object or null.
+     */
     private static String getString(Type actual, String expression, Object object, int line, URI uri) {
         Ilk.Box box = get(actual, expression, object, line, uri);
         return box == null ? null : diffuser.diffuse(box.object).toString();
     }
-    
-    // TODO Document.
+
+    /**
+     * Get a boxed instance of the object found at the given path, checking that
+     * the path actually exists relative to the given object.
+     * 
+     * @param actual
+     *            The type of the object.
+     * @param expression
+     *            The path to evaluate.
+     * @param object
+     *            The object.
+     * @param line
+     *            The line number where the path was read.
+     * @param uri
+     *            The URI from which the path was read.
+     * @return A boxed instance of the object.
+     */
     private static <T> Ilk.Box get(Type actual, String expression, Object object, int line, URI uri) {
         Path path;
         try {
@@ -713,8 +772,10 @@ public class StencilFactory {
         for (int i = 0; i < path.size(); i++) {
             Part part = path.get(i);
             if (Map.class.isAssignableFrom(getRawClass(type))) {
-                Map<?, ?> map = (Map<?, ?>) object;
-                object = map.get(part.getName());
+                if (object != null) {
+                    Map<?, ?> map = (Map<?, ?>) object;
+                    object = map.get(part.getName());
+                }
                 type = ((ParameterizedType) type).getActualTypeArguments()[1];
             } else {
                 Map<String, Getter> getters = Getters.getGetters(getRawClass(type));

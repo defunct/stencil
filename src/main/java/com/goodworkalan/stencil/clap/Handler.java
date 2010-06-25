@@ -35,7 +35,18 @@ public class Handler extends URLStreamHandler implements ResourceResolver {
         return new URL(null, uri.toString(), this);
     }
 
-    // TODO Document.
+    /**
+     * Open a class path resource indicated by the given URL. The host part of
+     * the URL is used to determine if the thread class loader or the system
+     * class loader should be used. The class class loader is cannot be
+     * referenced through this implementation.
+     * 
+     * @param u
+     *            The URL.
+     * @return A URL connection to read the given URL.
+     * @throws IOException
+     *             For any I/O error of if the resource cannnot be found.
+     */
     @Override
     public URLConnection openConnection(URL u) throws IOException {
         String host = u.getHost();
@@ -49,8 +60,22 @@ public class Handler extends URLStreamHandler implements ResourceResolver {
         }
         return classLoader.getResource(u.getPath().substring(1)).openConnection();
     }
-    
-    // TODO Document.
+
+    /**
+     * Assert that the given URL is correct for the CLAP URL scheme by checking
+     * that the host name is either "thread" or "system".
+     * 
+     * @param u
+     *            The URL that will be assigned the results of the parse.
+     * @param spec
+     *            The string to parse.
+     * @param start
+     *            The index of the first character to parse.
+     * @param limit
+     *            The length of the region to parse.
+     * @exception IllegalArgumentException
+     *                If the host is neither "thread" or "system".
+     */
     @Override
     public void parseURL(URL u, String spec, int start, int limit) {
         super.parseURL(u, spec, start, limit);
