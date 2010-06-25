@@ -19,6 +19,8 @@ class Stencil {
     public final String after;
     
     public final int count;
+    
+    public final int indent;
 
     /** The namespace URIs declared when the stencil was declared. */
     public Map<String, String> namespaceURIs = new HashMap<String, String>();
@@ -39,6 +41,7 @@ class Stencil {
         this.page = page;
         this.count = 0;
         this.index = 0;
+        this.indent = 0;
         this.after = null;
     }
 
@@ -53,10 +56,11 @@ class Stencil {
      * @param index
      *            The next index to process.
      */
-    public Stencil(Page page, String after, int index, int count) {
+    public Stencil(Page page, String after, int index, int count, int  indent) {
         this.page = page;
         this.after = after;
         this.index = index;
         this.count = count;
+        this.indent = indent;
     }
 }

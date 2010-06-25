@@ -37,6 +37,18 @@ public class StencilTest {
         assertEquals(actual, control);
     }
 
+    /** Test comments. */
+    @Test
+    public void comment() throws IOException {
+        StencilFactory stencils = new StencilFactory();
+        stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil").getAbsoluteFile().toURI());
+        StringWriter output = new StringWriter();
+        stencils.stencil(new InjectorBuilder().newInjector(), URI.create("comment.txt"), output);
+        String control = slurp(getClass().getResourceAsStream("nothing.txt"));
+        String actual = output.toString();
+        assertEquals(actual, control);
+    }
+
     /** Test variable assignments. */
     @Test
     public void get() throws IOException {

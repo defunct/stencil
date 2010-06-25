@@ -421,7 +421,7 @@ public class StencilFactory {
      * @throws SAXException
      *             For any error raised by the parser.
      */
-    private <T> Stencil[] compile(Injector injector, LinkedList<Level<T>> stack, Stencil stencil, Stencil nested, String blockName, int indent, Writer output)
+    private <T> Stencil[] compile(Injector injector, LinkedList<Level<T>> stack, Stencil stencil, Stencil nested, String blockName, Writer output)
     throws IOException {
         List<String> lines = stencil.page.lines;
         int index = stencil.index;
@@ -429,6 +429,7 @@ public class StencilFactory {
         List<String> blankLines = new ArrayList<String>();
         String after = stencil.after;
         int count = stencil.count;
+        int indent = stencil.indent;
         int blockCount = 0;
         Stencil current = null;
         LINES: while (after != null || index < stop) {
@@ -445,6 +446,9 @@ public class StencilFactory {
             String line; 
             if (after == null) {
                 line = lines.get(index++);
+                if (isComment(line)) {
+                    continue;
+                }
                 indent = indent(line);
                 if (indent < stack.getLast().indent) {
                     if (isWhitespace(line)) {
@@ -474,7 +478,13 @@ public class StencilFactory {
             }
             String terminal = null;
             for (;;) {
-                current = new Stencil(stencil.page, after, index, count);
+                current = new Stencil(stencil.page, after, index, count, indent);
+                if (indent < stack.getLast().indent) {
+                    if (blockName != null && blockName.equals(stack.getLast().command)) {
+                        stack.removeLast();
+                        return new Stencil[] { current, null };
+                    }
+                }
                 Matcher command = COMMAND.matcher(after);
                 if (!command.lookingAt()) {
                     if (count == 0) {
@@ -612,6 +622,7 @@ public class StencilFactory {
                     } catch (URISyntaxException e) {
                         throw new StencilException(e, "Malformed import URI [%s] at line [%d] of [%s].", index, stencil.page.uri);
                     }
+                    uri = stencil.page.uri.resolve(uri);
                     String alias = importation[0];
                     for (Map.Entry<String, Stencil> entry : compile(injector, uri, null).stencils.entrySet()) {
                         stack.getLast().stencils.put(alias + "." + entry.getKey(), entry.getValue());
@@ -622,30 +633,34 @@ public class StencilFactory {
                     } else {
                         stack.addLast(new Level<T>());
                         stack.getLast().command = name;
-                        stencil.page.stencils.put(payload, new Stencil(stencil.page, after, index, count));
+                        stencil.page.stencils.put(payload, current);
                     }
                 } else if (name.equals("Nested")) {
                     if (nested != null) {
-                        nested = compile(injector, stack, nested, null, payload, indent, output)[0];
+                        nested = compile(injector, stack, nested, null, payload, output)[0];
                     }
                 } else if (subStencil != null) {
-                    if (name.equals(stack.getLast().command) && bracket.equals("!")) {
-                        stack.removeLast();
-                    } else { 
+//                    if (name.equals(stack.getLast().command) && bracket.equals("!")) {
+//                        stack.removeLast();
+//                    } else { 
                         if (subStencil == null) {
                             if (payload == null) {
                                 throw new StencilException("Cannot find Stencil [%s] at line [%d] of [%s].", name, index, stencil.page.uri);
                             }
                             return new Stencil[] { current, null };
                         }
-                        Stencil result = compile(injector, stack, subStencil, new Stencil(stencil.page, after, index, count), null, indent, output)[1];
-                        stack.addLast(new Level<T>());
-                        stack.getLast().command = name;
+//                        int lastIndent = stack.getLast().indent;
+//                        stack.addLast(new Level<T>());
+//                        stack.getLast().command = name;
+//                        if (indent > lastIndent) {
+//                            stack.getLast().indent = indent;
+//                        }
+                        Stencil result = compile(injector, stack, subStencil, new Stencil(stencil.page, after, index, count, indent), null, output)[1];
                         after = result.after;
                         count = result.count;
                         index = result.index;
                         continue LINES;
-                    }
+//                    }
                 } else if (blockName != null) {
                     if (blockCount == 0) {
                         if (!blockName.equals(name)) {
@@ -654,7 +669,7 @@ public class StencilFactory {
                         blockCount++;
                         if (payload != null) {
                             print(output, payload);
-                            return new Stencil[] { new Stencil(stencil.page, after, index, count), null };
+                            return new Stencil[] { new Stencil(stencil.page, after, index, count, indent), null };
                         }
                         int lastIndent = stack.getLast().indent;
                         stack.addLast(new Level<T>());
@@ -665,7 +680,8 @@ public class StencilFactory {
                             terminal = after;
                         }
                     } else if (!blockName.equals(name)){
-                        return new Stencil[] { new Stencil(stencil.page, after, index, count), null };
+                        stack.removeLast();
+                        return new Stencil[] { current, null };
                     }
                 }
                 if (after.trim().length() == 0) {
@@ -677,9 +693,34 @@ public class StencilFactory {
             }
             after = null;
         }
-        return new Stencil[] { new Stencil(stencil.page, after, index, count), nested };
+        return new Stencil[] { new Stencil(stencil.page, after, index, count, indent), nested };
     }
 
+    /**
+     * Determine if the given line is a comment line.
+     * 
+     * @param line
+     *            The line.
+     * @return True if the line is a comment.
+     */
+    public boolean isComment(String line) {
+        int index = 0, stop = line.length();
+        while (index < stop) {
+            if (!Character.isWhitespace(line.charAt(index))) {
+                break;
+            }
+            index++;
+        }
+        if (stop != index) {
+            if (line.charAt(index) == '@') {
+                index++;
+                if (stop != index) {
+                    return Character.isWhitespace(line.charAt(index));
+                }
+            }
+        }
+        return false;
+    }
     public boolean isWhitespace(String string) {
         for (int i = 0, stop = string.length(); i < stop; i++) {
             if (!Character.isWhitespace(string.charAt(i))) {
@@ -716,7 +757,7 @@ public class StencilFactory {
         stack.addLast(new Level<T>());
         
         try {
-            compile(injector, stack, stencil, null, null, 0, output);
+            compile(injector, stack, stencil, null, null, output);
         } catch (IOException e) {
             throw new StencilException(e, "Cannot emit stencil [%s].", uri);
         }
