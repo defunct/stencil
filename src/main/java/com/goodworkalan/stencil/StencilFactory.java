@@ -15,16 +15,13 @@ import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Matcher;
@@ -184,19 +181,6 @@ public class StencilFactory {
         } else {
             compile(injector, uri, new Stencil(page, 0), output);
         }
-    }
-    
-    // TODO Document.
-    private static String getNamespace(LinkedList<Level> stack, String prefix) {
-        ListIterator<Level> iterator = stack.listIterator(stack.size());
-        while (iterator.hasPrevious()) {
-            Level level = iterator.previous();
-            String uri = level.namespaceURIs.get(prefix);
-            if (uri != null) {
-                return uri;
-            }
-        }
-        return null;
     }
 
     /**
@@ -417,14 +401,6 @@ public class StencilFactory {
         }
     }
 
-    private final static Set<String> INLINE_COMMANDS = new HashSet<String>(Arrays.asList(
-            "If", "Elsif", "Get", "Each"
-    ));
-
-    private final static Set<String> BLOCK_COMMANDS = new HashSet<String>(Arrays.asList(
-            "Bind"
-    ));
-    
     private int indent(String line) {
         int count = 0, stop = line.length();
         while (count < stop && Character.isWhitespace(line.charAt(count))) {
@@ -459,9 +435,6 @@ public class StencilFactory {
     private <T> int compile(Injector injector, LinkedList<Level> stack, LinkedList<Level> stencilStack, Stencil stencil, Stencil nested, Writer output)
     throws IOException {
         List<String> lines = stencil.page.lines;
-//        int nestedIndex = nested.index;
-//        boolean hasNested = false;
-//        boolean hasUnnamedNested = false;
         int index = stencil.index;
         int stop = lines.size();
         List<String> blankLines = new ArrayList<String>();
@@ -552,6 +525,7 @@ public class StencilFactory {
                         int lastIndent = stack.getLast().indent;
                         stack.addLast(new Level());
                         stack.getLast().skip = !condition;
+                        stack.getLast().met = !condition;
                         stack.getLast().command = name;
                         if (terminal == null && indent > lastIndent) {
                             stack.getLast().indent = indent;
@@ -562,6 +536,11 @@ public class StencilFactory {
                         }
                         stack.removeLast();
                     }
+                } else if (name.equals("Else")) {
+                    if (!"If".equals(stack.getLast().command)) {
+                        throw new IllegalStateException();
+                    }
+                    stack.getLast().skip = !stack.getLast().met;
                 }
                 if (after.trim().length() == 0) {
                     break;
@@ -601,43 +580,6 @@ public class StencilFactory {
         
         return stencil.page;
     }
-    
-    // TODO Document.
-    private static String getQualifiedName(List<Level> stack, String namespaceURI, String localName) {
-        if (namespaceURI.equals("")) {
-            return localName;
-        }
-        ListIterator<Level> iterator = stack.listIterator(stack.size());
-        while (iterator.hasPrevious()) {
-            Level level = iterator.previous();
-            String prefix = level.prefixes.get(namespaceURI);
-            if (prefix != null) {
-                return prefix.equals("") ? localName : prefix + ':' + localName;
-            }
-        }
-        throw new StencilException("Cannot find qualified name for " + namespaceURI);
-    }
-    
-//    // TODO Document.
-//    private static AttributesImpl getAttributes(LinkedList<Level> stack, AttributesImpl resolved, Type actual, Object object, int line, URI uri) {
-//        for (int j = 0, stop = resolved.getLength(); j < stop; j++) {
-//            if (resolved.getURI(j).equals(STENCIL_ATTRIBUTE_URI)) {
-//                String value = getString(actual, resolved.getLocalName(j), object, line, uri);
-//                if (object != null) {
-//                    String[] name = resolved.getValue(j).split(":");
-//                    if (name.length == 2) {
-//                        String namespaceURI = getNamespace(stack, name[0]);
-//                        resolved.setAttribute(j, namespaceURI, name[1], name[0] + ':' + name[1], "CDATA", diffuser.diffuse(value).toString());
-//                    } else if (name.length == 1) {
-//                        resolved.setAttribute(j, "", name[0], name[0], "CDATA", diffuser.diffuse(value).toString());
-//                    } else {
-//                        throw new StencilException("");
-//                    }
-//                }
-//            }
-//        }
-//        return resolved;
-//    }
 
     // TODO Document.
     private static String getString(Type actual, String expression, Object object, int line, URI uri) {

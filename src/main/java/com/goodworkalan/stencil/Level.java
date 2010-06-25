@@ -16,12 +16,6 @@ import com.goodworkalan.ilk.Ilk;
  * @author Alan Gutierrez
  */
 class Level {
-    /** The namespace URIs declared by this element. */
-    public Map<String, String> namespaceURIs = new HashMap<String, String>();
-    
-    /** The prefixes declared by this element. */
-    public Map<String, String> prefixes = new HashMap<String, String>();
-
     /**
      * Whether a start element node has been encountered. Prior to encountering
      * a start element node, the node list may contain namespace mapping nodes.
@@ -48,6 +42,8 @@ class Level {
     public boolean isStencil;
     
     public int indent;
+    
+    public boolean met;
     
     public String command;
     
