@@ -11,6 +11,7 @@ import java.net.URI;
 
 import org.testng.annotations.Test;
 
+import com.goodworkalan.ilk.inject.Injector;
 import com.goodworkalan.ilk.inject.InjectorBuilder;
 
 import static org.testng.Assert.*;
@@ -23,7 +24,7 @@ import static org.testng.Assert.*;
  */
 public class StencilTest {
     /** Test a do nothing template. */
-    @Test
+//    @Test
     public void nothing() throws IOException {
         StencilFactory stencils = new StencilFactory();
         stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil").getAbsoluteFile().toURI());
@@ -125,34 +126,26 @@ public class StencilTest {
 //        String actual = slurp(new ByteArrayInputStream(out.toByteArray()));
 //        assertXMLEqual(control1, actual);
 //    }
-//
-//    /** Test if. */
-//    @Test
-//    public void testIf()
-//    throws IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException {
-//        XMLUnit.setControlEntityResolver(new XhtmlEntityResolver(new FailingEntityResolver()));
-//        XMLUnit.setTestEntityResolver(new XhtmlEntityResolver(new FailingEntityResolver()));
-//    
-//        final Map<String, Person> people = new HashMap<String, Person>();
-//        people.put("second", new Person("George", "Washington"));
-//        InjectorBuilder newInjector = new InjectorBuilder();
-//        newInjector.module(new InjectorBuilder() {
-//            protected void build() {
-//                instance(people, new Ilk<Map<String, Person>>() {}, null);
-//            }
-//        });
-//    
-//        StencilFactory stencils = new StencilFactory();
-//        Injector injector = newInjector.newInjector();
-//        stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil/test").getAbsoluteFile().toURI());
-//        ByteArrayOutputStream out = new ByteArrayOutputStream();
-//        StreamResult stream = new StreamResult(out);
-//        TransformerHandler handler = newTransformerHandler(stream);
-//        stencils.stencil(injector, URI.create("if.xhtml"), handler);
-//        String control1 = slurp(getClass().getResourceAsStream("test/if.out.xhtml"));
-//        String actual = slurp(new ByteArrayInputStream(out.toByteArray()));
-//        assertXMLEqual(control1, actual);
-//    }
+
+    /** Test if. */
+    @Test
+    public void testIf() throws IOException {
+        InjectorBuilder newInjector = new InjectorBuilder();
+        newInjector.module(new InjectorBuilder() {
+            protected void build() {
+                instance(new Person("George", "Washington"), ilk(Person.class), null);
+            }
+        });
+        StencilFactory stencils = new StencilFactory();
+        stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil").getAbsoluteFile().toURI());
+        Injector injector = newInjector.newInjector();
+        StringWriter output = new StringWriter();
+        stencils.stencil(injector, URI.create("if.txt"), output);
+        String control = slurp(getClass().getResourceAsStream("if.out.txt"));
+        String actual = output.toString();
+        assertEquals(actual, control);
+
+    }
 //
 //    /** Test default. */
 //    @Test

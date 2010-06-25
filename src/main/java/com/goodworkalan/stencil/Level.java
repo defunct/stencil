@@ -39,15 +39,17 @@ class Level {
     public boolean choose;
     
     /** The type of context in a box. */
-    public Ilk.Box context;
+    public Ilk.Box ilk;
 
     /** The currently selected object in a box. */
-    public Ilk.Box selected;
+    public Ilk.Box instance;
     
     /** Whether this level was created for a stencil invocation. */
     public boolean isStencil;
     
     public int indent;
+    
+    public String command;
     
     public boolean pre;
     

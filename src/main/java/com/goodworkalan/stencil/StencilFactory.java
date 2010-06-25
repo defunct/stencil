@@ -15,11 +15,16 @@ import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Matcher;
@@ -32,6 +37,7 @@ import org.xml.sax.SAXException;
 import com.goodworkalan.diffuse.Diffuser;
 import com.goodworkalan.ilk.Ilk;
 import com.goodworkalan.ilk.inject.Injector;
+import com.goodworkalan.ilk.loader.IlkLoader;
 import com.goodworkalan.permeate.ParseException;
 import com.goodworkalan.permeate.Part;
 import com.goodworkalan.permeate.Path;
@@ -204,8 +210,8 @@ public class StencilFactory {
         ListIterator<Level> iterator = stack.listIterator(stack.size());
         while (iterator.hasPrevious()) {
             Level level = iterator.previous();
-            if (level.selected != null) {
-                return level.selected.object;
+            if (level.instance != null) {
+                return level.instance.object;
             }
         }
         return null;
@@ -223,8 +229,8 @@ public class StencilFactory {
         ListIterator<Level> iterator = stack.listIterator(stack.size());
         while (iterator.hasPrevious()) {
             Level level = iterator.previous();
-            if (level.context != null) {
-                return level.context;
+            if (level.ilk != null) {
+                return level.ilk;
             }
         }
         return null;
@@ -375,8 +381,58 @@ public class StencilFactory {
         return stack;
     }
     
-    private final static Pattern COMMAND = Pattern.compile("(.*)@(@|[A-Z][a-z]+)");
+    private final static Pattern COMMAND = Pattern.compile("^((?:[^@]|@@)*)@(@|[A-Z][a-z]+)(?:\\s*\\(([^)]*)\\))?(.*)$");
 
+    /**
+     * Write the given string to the the given writer followed by a new line if
+     * the writer is not null.
+     * 
+     * @param output
+     *            The output.
+     * @param string
+     *            The string.
+     * @throws IOException
+     *             For any I/O error.
+     */
+    private void println(Writer output, String string) throws IOException {
+        if (output != null) {
+            output.write(string);
+            output.write("\n");
+        }
+    }
+
+    /**
+     * Write the given string to the the given writer if the writer is not null.
+     * 
+     * @param output
+     *            The output.
+     * @param string
+     *            The string.
+     * @throws IOException
+     *             For any I/O error.
+     */
+    private void print(Writer output, String string) throws IOException {
+        if (output != null) {
+            output.write(string);
+        }
+    }
+
+    private final static Set<String> INLINE_COMMANDS = new HashSet<String>(Arrays.asList(
+            "If", "Elsif", "Get", "Each"
+    ));
+
+    private final static Set<String> BLOCK_COMMANDS = new HashSet<String>(Arrays.asList(
+            "Bind"
+    ));
+    
+    private int indent(String line) {
+        int count = 0, stop = line.length();
+        while (count < stop && Character.isWhitespace(line.charAt(count))) {
+            count++;
+        }
+        return count;
+    }
+    
     /**
      * Compile and possibly emit a section of a Stencil.
      * 
@@ -408,332 +464,92 @@ public class StencilFactory {
 //        boolean hasUnnamedNested = false;
         int index = stencil.index;
         for (int stop = lines.size(), height = stack.size(); index < stop; index++) {
+            boolean inline = true;
+            int indent = 0;
             String line = lines.get(index);
-            Matcher command = COMMAND.matcher(line);
-            while (command.matches()) {
-                
+            String after = line;
+            int count = 0;
+            String terminal = null;
+            for (;;) {
+                Matcher command = COMMAND.matcher(after);
+                if (!command.lookingAt()) {
+                    if (count == 0) {
+                        terminal = line;
+                    }
+                    break;
+                }
+                String before = command.group(1);
+                if (count == 0) {
+                    indent = indent(before);
+                }
+                if ((count != 0 || !isWhitespace(before)) && !stack.getLast().skip) {
+                    terminal = "";
+                    print(output, before);
+                }
+                after = command.group(4);
+                String name = command.group(2).trim();
+                String payload = command.group(3);
+                Ilk.Box ilk = getContext(stack);
+                Type ilkType = ilk == null ? null : ilk.key.get(0).type;
+                if (name.equals("Bind")) {
+                    try {
+                        stack.getLast().ilk = IlkLoader.fromString(Thread.currentThread().getContextClassLoader(), payload, Collections.<String, Class<?>>emptyMap());
+                    } catch (ClassNotFoundException e) {
+                        throw new StencilException(e, "Cannot load type [%s] at line [%s] of [%s].", payload, index + 1, stencil.page.uri);
+                    }
+                    if (output != null) {
+                        Ilk.Key key = stack.getLast().ilk.key.get(0);
+                        stack.getLast().instance = injector.instance(key, null);
+                    }
+                } else if (name.equals("If") || name.equals("Unless")) {
+                    if (!isBlank(payload)) {
+                        Ilk.Box value = get(ilkType, payload, getSelected(stack), index + 1, stencil.page.uri);
+                        boolean condition = false;
+                        if (value != null) {
+                            Class<?> rawClass = getRawClass(value.key.type);
+                            if (rawClass.equals(Boolean.class)) {
+                                condition = value.cast(new Ilk<Boolean>(Boolean.class));
+                            } else if (Collection.class.isAssignableFrom(rawClass)) {
+                                condition = ! ((Collection<?>) value.object).isEmpty();
+                            } else if (Iterator.class.isAssignableFrom(rawClass)) {
+                                condition = ((Iterator<?>) value.object).hasNext();
+                            } else {
+                                condition = true;
+                            }
+                        }
+                        if (name.equals("Unless")) {
+                            condition = !condition;
+                        }
+                        stack.addLast(new Level());
+                        stack.getLast().skip = !condition;
+                        stack.getLast().command = name;
+                    } else {
+                        if (!name.equals(stack.getLast().command)) {
+                            throw new IllegalStateException();
+                        }
+                        stack.removeLast();
+                    }
+                }
+                if (after.trim().length() == 0) {
+                    break;
+                }
+                count++;
             }
-            if (output != null) {
-                output.write(line);
-                output.write("\n");
+            if (terminal != null && !stack.getLast().skip) {
+                println(output, terminal);
             }
         }
-//            Object object = nodes.get(index);
-//            if (object instanceof NotationDeclaration) {
-//                if (dtd != null) {
-//                    NotationDeclaration nd = (NotationDeclaration) object;
-//                    dtd.notationDecl(nd.name, nd.publicId, nd.systemId);
-//                }
-//            } else if (object instanceof Comment) {
-//                if (lexical != null) {
-//                    String text = ((Comment) object).text;
-//                    lexical.comment(text.toCharArray(), 0, text.length());
-//                }
-//            } else if (object instanceof DocumentTypeDefinition) {
-//                if (lexical != null) {
-//                    DocumentTypeDefinition doctype = (DocumentTypeDefinition) object;
-//                    if (doctype.start) {
-//                        lexical.startDTD(doctype.name, doctype.publicId, doctype.systemId);
-//                    } else {
-//                        lexical.endDTD();
-//                    }
-//                }
-//            } else if (object instanceof String[]) {
-//                if (!stack.getLast().skip) {
-//                    String[] mapping = (String[]) object;
-//                    if (stack.getLast().hasElement) {
-//                        stack.addLast(new Level());
-//                        stencilStack.addLast(new Level());
-//                    }
-//                    stencilStack.getLast().namespaceURIs.put(mapping[0], mapping[1]);
-//                    stencilStack.getLast().prefixes.put(mapping[1], mapping[0]);
-//                    stack.getLast().namespaceURIs.put(mapping[0], mapping[1]);
-//                    stack.getLast().prefixes.put(mapping[1], mapping[0]);
-//                    if (content != null) {
-//                        content.startPrefixMapping(mapping[0], mapping[1]);
-//                    }
-//                }
-//            } else if (object instanceof Element) {
-//                Element element = (Element) object;
-//                if (!element.start) {
-//                    if (height == stack.size()) {
-//                        break;
-//                    }
-//                    if (content != null) {
-//                        if (!stack.getLast().skip && !stack.getLast().choose) {
-//                            content.endElement(element.namespaceURI, element.localName, getQualifiedName(stack, element.namespaceURI, element.localName));
-//                        }
-//                        for (String prefix : stack.getLast().namespaceURIs.keySet()) {
-//                            content.endPrefixMapping(prefix);
-//                        }
-//                    }
-//                    stack.removeLast();
-//                    stencilStack.removeLast();
-//                    continue;
-//                }
-//                if (stack.getLast().hasElement) {
-//                    boolean skip = stack.getLast().skip;
-//                    stack.addLast(new Level());
-//                    stencilStack.addLast(new Level());
-//                    stack.getLast().skip = skip;
-//                    stack.getLast().hasElement = skip;
-//                }
-//                if (stack.getLast().skip) {
-//                    continue;
-//                }
-//                AttributesImpl resolved = new AttributesImpl(element.attributes);
-//                stack.getLast().hasElement = true;
-//                String localName = element.localName;
-//                boolean inStencilNamespace = element.namespaceURI.equals(STENCIL_URI);
-//                // Determine if we need to include any stencils.
-//                {
-//                    int level = stack.size() - 1;
-//                    String include = null;
-//                    if (inStencilNamespace && localName.equals("import")) {
-//                        level--;
-//                        stack.getLast().skip = true;
-//                        include = resolved.getLocalName(resolved.getIndex("name"));
-//                        if (isBlank(include)) {
-//                            throw new StencilException("");
-//                        }
-//
-//                    } else {
-//                        int attribute = resolved.getIndex(STENCIL_URI, "import");
-//                        if (attribute != -1) {
-//                            include = resolved.getValue(attribute).trim();
-//                            resolved.removeAttribute(attribute);
-//                        }
-//                    }
-//                    if (!isBlank(include)) {
-//                        Page included = compile(injector, stencil.page.uri.resolve(include), null, null, null);
-//                        stack.get(level).stencils.putAll(included.stencils);
-//                    }
-//                }
-//                {
-//                    String name = null;
-//                    int subIndex = index;
-//                    if (inStencilNamespace && localName.equals("stencil")) {
-//                        subIndex++;
-//                        name = resolved.getLocalName(resolved.getIndex("name"));
-//                        if (name == null) {
-//                            throw new StencilException("");
-//                        }
-//                    } else  {
-//                        int attribute = resolved.getIndex(STENCIL_URI, "stencil");
-//                        if (attribute != -1) {
-//                            name = resolved.getValue(attribute).trim();
-//                            resolved.removeAttribute(attribute);
-//                        }
-//                    }
-//                    if (!isBlank(name) && !stack.get(stack.size() - 2).isStencil) {
-//                        stack.getLast().skip = true;
-//                        String[] qualified = name.split(":");
-//                        Stencil subStencil = new Stencil(stencil.page, subIndex);
-//                        for (Level level : stack) {
-//                            subStencil.namespaceURIs.putAll(level.namespaceURIs);
-//                            subStencil.prefixes.putAll(level.prefixes);
-//                        }
-//                        stencil.page.stencils.put(new QName(getNamespace(stack, qualified[0]), qualified[1]), subStencil);
-//                        LinkedList<Level> subStack = new LinkedList<Level>();
-//                        subStack.addLast(new Level());
-//                        subStack.getLast().hasElement = true;
-//                        subStack.getLast().isStencil = true;
-//                        index = compile(injector, subStack, newStack(), subStencil, new Stencil(), content, lexical, dtd) - 1;
-//                        subStack.removeLast();
-//                    }
-//                }
-//                { // Check for a new evaluation context.
-//                    int attribute = resolved.getIndex(STENCIL_URI, "bind");
-//                    if (attribute != -1) {
-//                        String context = resolved.getValue(attribute);
-//                        resolved.removeAttribute(attribute);
-//                        if (!isBlank(context)) {
-//                            try {
-//                                stack.getLast().context = IlkLoader.fromString(Thread.currentThread().getContextClassLoader(), context, Collections.<String, Class<?>>emptyMap());
-//                            } catch (ClassNotFoundException e) {
-//                                throw new StencilException(e, "Cannot load type [%s] at line [%s] of [%s].", context, element.line, stencil.page.uri);
-//                            }
-//                        }
-//                        if (content != null) {
-//                            Ilk.Key key = new Ilk.Key(((ParameterizedType) stack.getLast().context.key.type).getActualTypeArguments()[0]);
-//                            stack.getLast().selected = injector.instance(key, null);
-//                        }
-//                    }
-//                }
-//                Ilk.Box context = getContext(stack);
-//                Type contextType = context == null ? null : ((ParameterizedType) context.key.type).getActualTypeArguments()[0];
-//                if (inStencilNamespace) {
-//                    stack.getLast().skip = true;
-//                    if (localName.equals("class")) {
-//                        if (!(nodes.get(index + 1) instanceof String)) {
-//                            throw new StencilException("Cannot load empty import at line [%s] of [%s].", element.line, stencil.page.uri);
-//                        }
-//                        Ilk.Box importation;
-//                        try {
-//                            importation = IlkLoader.fromString(Thread.currentThread().getContextClassLoader(), (String) nodes.get(index + 1), Collections.<String, Class<?>>emptyMap());
-//                        } catch (ClassNotFoundException e) {
-//                            throw new StencilException(e,  "Cannot load type [%s] at line [%s] of [%s].", nodes.get(index + 1), element.line, stencil.page.uri);
-//                        }
-//                        stack.get(stack.size() - 2).imports.add(importation.key.get(0));
-//                        index++;
-//                    } else if (localName.equals("nested")) {
-//                        String name = "";
-//                        {
-//                            int nameIndex = resolved.getIndex("name");
-//                            if (nameIndex == -1) {
-//                                if (hasNested) {
-//                                    throw new StencilException("Only one nested element is allowed when unnamed nested elmeents are used at line [%s] of [%s].", element.line, stencil.page.uri);
-//                                }
-//                            } else {
-//                                if (hasUnnamedNested) {
-//                                    throw new StencilException("Cannot mix named and unnamed nested elements at line [%s] of [%s].", element.line, stencil.page.uri);
-//                                }
-//                                name = resolved.getValue(nameIndex).trim();
-//                                if (isBlank(name)) {
-//                                    throw new StencilException("Missing nested name attribute value at line [%s] of [%s].", element.line, stencil.page.uri);
-//                                }
-//                            }
-//                        }
-//                        if (nested.page.nodes.size() != nestedIndex) {
-//                            if (name == "*") {
-//                                Stencil subStencil = new Stencil(nested.page, nestedIndex);
-//                                stack.addLast(new Level());
-//                                stack.getLast().hasElement = true;
-//                                compile(injector, stack, newStack(), subStencil, new Stencil(), content, lexical, dtd);
-//                                stack.removeLast();
-//                            } else {
-//                                while (!(nested.page.nodes.get(nestedIndex) instanceof Element)) {
-//                                    nestedIndex++;
-//                                }
-//                                if (nested.page.nodes.size() != nestedIndex) {
-//                                    Element nestedElement = (Element) nested.page.nodes.get(nestedIndex);
-//                                    if (nestedElement.start) {
-//                                        String[] qualified = name.split(":");
-//                                        qualified[0] = getNamespace(stencilStack, qualified[0]);
-//                                        if (nestedElement.namespaceURI.equals(qualified[0]) && nestedElement.localName.equals(qualified[1])) {
-//                                            nestedIndex++;
-//                                            stack.addLast(new Level());
-//                                            stack.getLast().hasElement = true;
-//                                            nestedIndex = compile(injector, stack, newStack(), new Stencil(nested.page, nestedIndex), new Stencil(), content, lexical, dtd) + 1;
-//                                            stack.removeLast();
-//                                        }
-//                                    }
-//                                }
-//                            }
-//                        }
-//                    } else if (localName.equals("var")) {
-//                        String name = resolved.getValue(resolved.getIndex("path"));
-//                        if (isBlank(name)) {
-//                            throw new StencilException("Missing var name attribute at line [%s] of [%s].", element.line, stencil.page.uri);
-//                        }
-//                        String value = getString(contextType, name, getSelected(stack), element.line, stencil.page.uri);
-//                        if (content != null) {
-//                            stack.getLast().skip = true;
-//                            content.characters(value.toCharArray(), 0, value.length());
-//                        }
-//                    } else if (localName.equals("each")) {
-//                        String path = resolved.getValue(resolved.getIndex("path"));
-//                        if (isBlank(path)) {
-//                            throw new StencilException("Missing path attribute for each at line [%s] of [%s].", element.line, stencil.page.uri);
-//                        }
-//                        Ilk.Box value = get(contextType, path, getSelected(stack), element.line, stencil.page.uri);
-//                        if (!Collection.class.isAssignableFrom(getRawClass(value.key.type))) {
-//                            throw new StencilException("Missing path attribute for each at line [%s] of [%s].", element.line, stencil.page.uri);
-//                        }
-//                        Actualizer<T> actualizer = new Actualizer<T>(value.key.get(0).type);
-//                        if (content == null) {
-//                            stack.addLast(new Level());
-//                            stack.getLast().hasElement = true;
-//                            stack.getLast().context = actualizer.actual().box();
-//                            compile(injector, stack, newStack(), new Stencil(stencil.page, index + 1), new Stencil(), content, lexical, dtd);
-//                            stack.removeLast();
-//                        } else {
-//                            for (T item : actualizer.collection(value)) {
-//                                stack.addLast(new Level());
-//                                stack.getLast().hasElement = true;
-//                                stack.getLast().context = actualizer.actual().box();
-//                                stack.getLast().selected = actualizer.actual().box(item);
-//                                compile(injector, stack, newStack(), new Stencil(stencil.page, index + 1), new Stencil(), content, lexical, dtd);
-//                                stack.removeLast();
-//                            }
-//                        }
-//                        stack.getLast().skip = true;
-//                    } else if (localName.equals("if") || localName.equals("unless")) {
-//                        String path = resolved.getValue(resolved.getIndex("path"));
-//                        if (isBlank(path)) {
-//                            throw new StencilException("Missing path attribute for if at line [%d] of [%s]", element.line, stencil.page.uri);
-//                        }
-//                        // XXX Iterable needs to be converted into an iterator.
-//                        // XXX Identity hash map of iterators.
-//                        Ilk.Box value = get(contextType, path, getSelected(stack), element.line, stencil.page.uri);
-//                        boolean condition = false;
-//                        if (value != null) {
-//                            Class<?> rawClass = getRawClass(value.key.type);
-//                            if (rawClass.equals(Boolean.class)) {
-//                                condition = value.cast(new Ilk<Boolean>(Boolean.class));
-//                            } else if (Collection.class.isAssignableFrom(rawClass)) {
-//                                condition = ! ((Collection<?>) value.object).isEmpty();
-//                            } else if (Iterator.class.isAssignableFrom(rawClass)) {
-//                                condition = ((Iterator<?>) value.object).hasNext();
-//                            } else {
-//                                condition = true;
-//                            }
-//                        }
-//                        if (localName.equals("unless")) {
-//                            condition = !condition;
-//                        }
-//                        if (condition) {
-//                            stack.addLast(new Level());
-//                            stack.getLast().hasElement = true;
-//                            compile(injector, stack, newStack(), new Stencil(stencil.page, index + 1), new Stencil(), content, lexical, dtd);
-//                            stack.removeLast();
-//                            Level level = stack.get(stack.size() - 2);
-//                            if (level.choose) {
-//                                level.skip = true;
-//                            }
-//                        }
-//                    } else if (localName.equals("default")) {
-//                        stack.addLast(new Level());
-//                        stack.getLast().hasElement = true;
-//                        compile(injector, stack, newStack(), new Stencil(stencil.page, index + 1), new Stencil(), content, lexical, dtd);
-//                        stack.removeLast();
-//                        Level level = stack.get(stack.size() - 2);
-//                        if (level.choose) {
-//                            level.skip = true;
-//                        }
-//                    } else if (localName.equals("choose")) {
-//                        stack.getLast().choose = true;
-//                        stack.getLast().skip = false;
-//                    }
-//                }
-//                resolved = getAttributes(stack, resolved, contextType, getSelected(stack), element.line, stencil.page.uri);
-//                if (!isBlank(element.namespaceURI)) {
-//                    Stencil subStencil = getStencil(stack, new QName(element.namespaceURI, element.localName));
-//                    if (subStencil != null) {
-//                        stack.getLast().skip = true;
-//                        stack.addLast(new Level());
-//                        stack.getLast().hasElement = true;
-//                        stack.getLast().isStencil = true;
-//                        LinkedList<Level> subStack = newStack();
-//                        subStack.getLast().namespaceURIs.putAll(subStencil.namespaceURIs);
-//                        subStack.getLast().prefixes.putAll(subStencil.prefixes);
-//                        compile(injector, stack, subStack, subStencil, new Stencil(stencil.page, index + 1), content, lexical, dtd);
-//                        stack.removeLast();
-//                    }
-//                }
-//                if (content != null && !stack.getLast().skip && !stack.getLast().choose) {
-//                    content.startElement(element.namespaceURI, element.localName, getQualifiedName(stack, element.namespaceURI, element.localName), resolved);
-//                }
-//            } else if (object instanceof String) {
-//                if (content != null && !stack.getLast().skip && !stack.getLast().choose) {
-//                    String characters = (String) object;
-//                    content.characters(characters.toCharArray(), 0, characters.length());
-//                }
-//            }
-//        }
         return index;
     }
 
+    public boolean isWhitespace(String string) {
+        for (int i = 0, stop = string.length(); i < stop; i++) {
+            if (!Character.isWhitespace(string.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
     // TODO Document.
     private Page compile(Injector injector, URI uri, Stencil stencil, Writer output) {
         // Stack of state based on document element depth.
