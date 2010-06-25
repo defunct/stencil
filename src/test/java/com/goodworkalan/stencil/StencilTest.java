@@ -363,6 +363,25 @@ public class StencilTest {
         String actual = output.toString();
         assertEquals(actual, control);
     }
+
+    /** Test else false. */
+    @Test
+    public void stencil() throws IOException {
+        InjectorBuilder newInjector = new InjectorBuilder();
+        newInjector.module(new InjectorBuilder() {
+            protected void build() {
+                instance(new Person(null, "Washington"), ilk(Person.class), null);
+            }
+        });
+        StencilFactory stencils = new StencilFactory();
+        stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil").getAbsoluteFile().toURI());
+        Injector injector = newInjector.newInjector();
+        StringWriter output = new StringWriter();
+        stencils.stencil(injector, URI.create("stencil.txt"), output);
+        String control = slurp(getClass().getResourceAsStream("stencil.out.txt"));
+        String actual = output.toString();
+        assertEquals(actual, control);
+    }
 }
 
 /* vim: set et sw=4 ts=4 ai tw=78 nowrap: */

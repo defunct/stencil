@@ -6,14 +6,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import javax.xml.namespace.QName;
-
 import com.goodworkalan.ilk.Ilk;
 
 /**
- * A stack element in a stack that mirrors the decent into the document 
- * tree when an in order document is processed by Stencil.
- *
+ * A stack element in a stack that mirrors the decent into the document logic
+ * tree when a document is processed by Stencil.
+ * 
  * @author Alan Gutierrez
  */
 class Level<T> {
@@ -29,25 +27,30 @@ class Level<T> {
     /** Whether this level was created for a stencil invocation. */
     public boolean isStencil;
     
+    /** The depth of the indent before the command if it is a block command. */
     public int indent;
     
+    /** Whether or not one of the conditions of an if/else latter has been met. */
     public boolean met;
     
+    /** The command. */
     public String command;
     
-    public boolean pre;
+    /** The index where this command began. */
+    public int index;
     
-    public int eachIndex;
-    
-    public String eachAfter;
+    /** The content after this command on the line where it began. */
+    public String after;
 
-    Iterator<T> each = null;
+    /** The iterator of the collection traversed by each. */
+    public Iterator<T> each = null;
     
-    Actualizer<T> actualizer = null;
+    /** The type collection for the collection traversed by each. */
+    public Actualizer<T> actualizer = null;
     
     /** The map of stencils imported by this element. */
-    public Map<QName, Stencil> stencils = new HashMap<QName, Stencil>();
+    public Map<String, Stencil> stencils = new HashMap<String, Stencil>();
     
-    /** The list of imports. */
-    public List<Ilk.Key> imports = new ArrayList<Ilk.Key>();
+    /** The list of classes brought into the Java namespace. */
+    public List<Ilk.Key> classes = new ArrayList<Ilk.Key>();
 }

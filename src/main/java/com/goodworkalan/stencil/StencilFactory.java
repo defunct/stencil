@@ -12,6 +12,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
@@ -26,8 +27,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import javax.xml.namespace.QName;
 
 import org.xml.sax.SAXException;
 
@@ -229,11 +228,11 @@ public class StencilFactory {
      *            The qualified name of the stencil.
      * @return The boxed type of the context object.
      */
-    private <T> Stencil getStencil(LinkedList<Level<T>> stack, QName qName) {
+    private <T> Stencil getStencil(LinkedList<Level<T>> stack, String name) {
         ListIterator<Level<T>> iterator = stack.listIterator(stack.size());
         while (iterator.hasPrevious()) {
             Level<T> level = iterator.previous();
-            Stencil stencil = level.stencils.get(qName);
+            Stencil stencil = level.stencils.get(name);
             if (stencil != null) {
                 return stencil;
             }
@@ -351,20 +350,8 @@ public class StencilFactory {
         return compile(injector, uri, new Stencil(new Page(uri, connection.getLastModified(), lines), 0), output);
     }
 
-    /**
-     * Create a new in order traversal stack with a single empty root element so
-     * that there is always a level and we don't have to keep checking for an
-     * empty list.
-     * 
-     * @return An empty level stack.
-     */
-    private <T> LinkedList<Level<T>> newStack() {
-        LinkedList<Level<T>> stack = new LinkedList<Level<T>>();
-        stack.addLast(new Level<T>());
-        return stack;
-    }
-    
-    private final static Pattern COMMAND = Pattern.compile("^((?:[^@]|@@)*)@(@|[A-Z][a-z]+)(?:\\s*\\(([^)]*)\\))?(.*)$");
+    /** The regular expression to match a start or end command. */
+    private final static Pattern COMMAND = Pattern.compile("^((?:[^@]|@@)*)@(@|[A-Z][a-z]+(?:\\.[A-Za-z][A-Za-z0-9]+)?)(?:(\\(|!)([^)]*)\\))?(.*)$");
 
     /**
      * Write the given string to the the given writer followed by a new line if
@@ -400,6 +387,13 @@ public class StencilFactory {
         }
     }
 
+    /**
+     * Get the number of spaces by which the line is indented.
+     * 
+     * @param line
+     *            The line.
+     * @return The number of spaces indented.
+     */
     private int indent(String line) {
         int count = 0, stop = line.length();
         while (count < stop && Character.isWhitespace(line.charAt(count))) {
@@ -431,21 +425,45 @@ public class StencilFactory {
      * @throws SAXException
      *             For any error raised by the parser.
      */
-    private <T> int compile(Injector injector, LinkedList<Level<T>> stack, LinkedList<Level<T>> stencilStack, Stencil stencil, Stencil nested, Writer output)
+    private <T> Stencil[] compile(Injector injector, LinkedList<Level<T>> stack, String blockName, Stencil stencil, Stencil nested, Writer output)
     throws IOException {
         List<String> lines = stencil.page.lines;
         int index = stencil.index;
         int stop = lines.size();
         List<String> blankLines = new ArrayList<String>();
-        while (index < stop) {
-            String line = lines.get(index++);
-            int indent = indent(line);
-            if (indent < stack.getLast().indent) {
-                if (isWhitespace(line)) {
-                    blankLines.add(line);
-                    continue;
-                } else if (stack.getLast().command.equals("If")) {
-                    stack.removeLast();
+        String after = stencil.after;
+        int count = stencil.count;
+        int blockCount = 0;
+        LINES: while (after != null || index < stop) {
+            // Bothers me that I can't find a way to put the initialization
+            // block before the while and remove the test for null after,
+            // because it bothers me to have initialization within the loop that
+            // runs only on the first pass, but we're trying to resume the line
+            // processing in the middle of a line, so some sort of
+            // re-orientation after the jump will be necessary, which means that
+            // this first pass initialization doesn't really happen on the first
+            // pass through the list of lines, we're jumping, not within this
+            // one method, but definitely jumping around in the list of lines,
+            // so we may as well make it readable.
+            int indent = 0;
+            String line; 
+            if (after == null) {
+                line = lines.get(index++);
+                indent = indent(line);
+                if (indent < stack.getLast().indent) {
+                    if (isWhitespace(line)) {
+                        blankLines.add(line);
+                        continue;
+                    } else if (stack.getLast().command.equals("If")) {
+                        stack.removeLast();
+                        if (!stack.getLast().skip) {
+                            for (String blankLine : blankLines) {
+                                println(output, blankLine);
+                            }
+                        }
+                        blankLines.clear();
+                    }
+                } else {
                     if (!stack.getLast().skip) {
                         for (String blankLine : blankLines) {
                             println(output, blankLine);
@@ -453,16 +471,11 @@ public class StencilFactory {
                     }
                     blankLines.clear();
                 }
+                after = line;
+                count = 0;
             } else {
-                if (!stack.getLast().skip) {
-                    for (String blankLine : blankLines) {
-                        println(output, blankLine);
-                    }
-                }
-                blankLines.clear();
+                line = after;
             }
-            String after = line;
-            int count = 0;
             String terminal = null;
             for (;;) {
                 Matcher command = COMMAND.matcher(after);
@@ -473,17 +486,22 @@ public class StencilFactory {
                     break;
                 }
                 String before = command.group(1);
-                after = command.group(4);
-                if (count != 0 || !isWhitespace(before)) {
+                after = command.group(5);
+                if (terminal != null || !isWhitespace(before)) {
                     terminal = after;
                     if (!stack.getLast().skip) {
                         print(output, before);
                     }
                 }
                 String name = command.group(2).trim();
-                String payload = command.group(3);
+                String bracket = command.group(3);
+                if (bracket == null || bracket.equals("")) {
+                    bracket = "!";
+                }
+                String payload = command.group(4);
                 Ilk.Box ilk = getContext(stack);
                 Type ilkType = ilk == null ? null : ilk.key.get(0).type;
+                count++;
                 if (name.equals("Bind")) {
                     try {
                         stack.getLast().ilk = IlkLoader.fromString(Thread.currentThread().getContextClassLoader(), payload, Collections.<String, Class<?>>emptyMap());
@@ -551,14 +569,15 @@ public class StencilFactory {
                             stack.removeLast();
                         } else {
                             stack.getLast().instance = stack.getLast().actualizer.actual().box(stack.getLast().each.next());
-                            index = stack.getLast().eachIndex;
-                            after = stack.getLast().eachAfter;
+                            index = stack.getLast().index;
+                            after = stack.getLast().after;
                         }
                     } else {
                         Ilk.Box value = get(ilkType, payload, getSelected(stack), index, stencil.page.uri);
                         if (!Collection.class.isAssignableFrom(getRawClass(value.key.type))) {
                             throw new StencilException("Missing path attribute for each at line [%s] of [%s].", index, stencil.page.uri);
                         }
+                        int lastIndent = stack.getLast().indent;
                         stack.addLast(new Level<T>());
                         stack.getLast().actualizer = new Actualizer<T>(value.key.get(0).type);
                         stack.getLast().command = name;
@@ -567,10 +586,15 @@ public class StencilFactory {
                             stack.getLast().each = stack.getLast().actualizer.collection(value).iterator();
                             if (stack.getLast().each.hasNext()) {
                                 stack.getLast().instance = stack.getLast().actualizer.actual().box(stack.getLast().each.next());
-                                stack.getLast().eachIndex = index;
-                                stack.getLast().eachAfter = after;
+                                stack.getLast().index = index;
+                                stack.getLast().after = after;
                             } else {
                                 stack.getLast().skip = true;
+                            }
+                            if (terminal == null && indent > lastIndent) {
+                                stack.getLast().indent = indent;
+                            } else {
+                                terminal = after;
                             }
                         }
                     }
@@ -582,17 +606,67 @@ public class StencilFactory {
                             print(output, payload);
                         }
                     }
+                } else if (name.equals("Import")) {
+                    String[] importation = payload.split("\\s+");
+                    URI uri;
+                    try {
+                        uri = new URI(importation[0]);
+                    } catch (URISyntaxException e) {
+                        throw new StencilException(e, "Malformed import URI [%s] at line [%d] of [%s].", index, stencil.page.uri);
+                    }
+                    String alias = importation[1];
+                    for (Map.Entry<String, Stencil> entry : compile(injector, uri, null).stencils.entrySet()) {
+                        stack.getLast().stencils.put(alias + "." + entry.getKey(), entry.getValue());
+                    }
+                } else if (name.equals("Stencil")) {
+                    stack.addLast(new Level<T>());
+                    stack.getLast().command = name;
+                    stencil.page.stencils.put(payload, new Stencil(stencil.page, after, index, count));
+                } else if (name.equals("Nested")) {
+                    if (nested != null) {
+                        nested = compile(injector, stack, payload, nested, null, output)[0];
+                    }
+                } else if (blockName != null) {
+                    if (!blockName.equals(name)) {
+                        throw new StencilException("Exected nested block [%s] missing at line [%d] of [%s].", blockName, index, stencil.page.uri);
+                    }
+                    if (blockCount == 0) {
+                        if (payload != null) {
+                            print(output, payload);
+                            return new Stencil[] { new Stencil(stencil.page, after, index, count), null };
+                        }
+                        stack.addLast(new Level<T>());
+                        stack.getLast().command = name;
+                    } else {
+                        return new Stencil[] { new Stencil(stencil.page, after, index, count), null };
+                    }
+                } else {
+                    if (name.equals(stack.getLast().command) && bracket.equals("!")) {
+                        stack.removeLast();
+                    } else {
+                        Stencil subStencil = getStencil(stack, name);
+                        if (subStencil == null) {
+                            throw new StencilException("Cannot find Stencil [%s] at line [%d] of [%s].", name, index, stencil.page.uri);
+                        }
+                        Stencil result = compile(injector, stack, null, subStencil, new Stencil(stencil.page, after, index, count), output)[1];
+                        stack.addLast(new Level<T>());
+                        stack.getLast().command = name;
+                        after = result.after;
+                        count = result.count;
+                        index = result.index;
+                        continue LINES;
+                    }
                 }
                 if (after.trim().length() == 0) {
                     break;
                 }
-                count++;
             }
             if (terminal != null && !stack.getLast().skip) {
                 println(output, terminal);
             }
+            after = null;
         }
-        return index;
+        return new Stencil[] { new Stencil(stencil.page, after, index, count), nested };
     }
 
     public boolean isWhitespace(String string) {
@@ -613,7 +687,7 @@ public class StencilFactory {
         stack.addLast(new Level<T>());
         
         try {
-            compile(injector, stack, this.<T>newStack(), stencil, new Stencil(), output);
+            compile(injector, stack, null, stencil, null, output);
         } catch (IOException e) {
             throw new StencilException(e, "Cannot emit stencil [%s].", uri);
         }
@@ -663,8 +737,8 @@ public class StencilFactory {
         }
         return enbox(object, type);
     }
-    
-    // TODO Document.
+
+    // TODO This is given an object, how is that type-safe?
     private static <T> Ilk.Box enbox(T object, Type type) {
         return new Ilk<T>(){}.assign(new Ilk<T>(){}, type).box(object);
     }

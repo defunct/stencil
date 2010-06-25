@@ -5,8 +5,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.xml.namespace.QName;
-
 /**
  * Cached results of a stencil document analysis, including in order document
  * nodes and the stencils discovered in the documents.
@@ -24,7 +22,7 @@ class Page {
     public final List<String> lines;
 
     /** The map of qualified stencil names to line indexes. */
-    public final Map<QName, Stencil> stencils = new HashMap<QName, Stencil>();
+    public final Map<String, Stencil> stencils = new HashMap<String, Stencil>();
 
     /**
      * Create a page with the given list of in order document nodes.
