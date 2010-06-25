@@ -482,11 +482,11 @@ public class StencilFactory {
                 if (count == 0) {
                     indent = indent(before);
                 }
+                after = command.group(4);
                 if ((count != 0 || !isWhitespace(before)) && !stack.getLast().skip) {
-                    terminal = "";
+                    terminal = after;
                     print(output, before);
                 }
-                after = command.group(4);
                 String name = command.group(2).trim();
                 String payload = command.group(3);
                 Ilk.Box ilk = getContext(stack);
@@ -500,6 +500,14 @@ public class StencilFactory {
                     if (output != null) {
                         Ilk.Key key = stack.getLast().ilk.key.get(0);
                         stack.getLast().instance = injector.instance(key, null);
+                    }
+                } else if (name.equals("Get")) {
+                    if (isBlank(payload)) {
+                        throw new StencilException("Missing Get path at line [%s] of [%s].", index + 1, stencil.page.uri);
+                    }
+                    String value = getString(ilkType, payload, getSelected(stack), index + 1, stencil.page.uri);
+                    if (!stack.getLast().skip ) {
+                        print(output, value);
                     }
                 } else if (name.equals("If") || name.equals("Unless")) {
                     if (!isBlank(payload)) {
@@ -550,6 +558,7 @@ public class StencilFactory {
         }
         return true;
     }
+
     // TODO Document.
     private Page compile(Injector injector, URI uri, Stencil stencil, Writer output) {
         // Stack of state based on document element depth.

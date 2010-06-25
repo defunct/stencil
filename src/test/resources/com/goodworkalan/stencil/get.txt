@@ -1,0 +1,2 @@
+@Bind(com.goodworkalan.stencil.Person)
+This is an example of get, @Get(firstName).

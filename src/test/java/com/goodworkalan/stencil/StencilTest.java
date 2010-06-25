@@ -35,47 +35,25 @@ public class StencilTest {
         assertEquals(actual, control);
     }
 
-//    /**
-//     * Create a new transformer handler that records to the given result.
-//     * 
-//     * @param result
-//     *            The result.
-//     * @return A new transformer handler.
-//     * @throws TransformerConfigurationException
-//     *             If for some reason the TransformerHandler cannot be created.
-//     */
-//    public TransformerHandler newTransformerHandler(Result result) throws TransformerConfigurationException {
-//        TransformerHandler handler = ((SAXTransformerFactory) TransformerFactory.newInstance()).newTransformerHandler();
-//        handler.setResult(result);
-//        return handler;
-//    }
-//    
-//    /** Test variable assignments. */
-//    @Test
-//    public void var()
-//    throws IOException, IntrospectionException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, SAXException, ParserConfigurationException, TransformerConfigurationException {
-//        XMLUnit.setControlEntityResolver(new XhtmlEntityResolver(new FailingEntityResolver()));
-//        XMLUnit.setTestEntityResolver(new XhtmlEntityResolver(new FailingEntityResolver()));
-//
-//        StencilFactory stencils = new StencilFactory();
-//        
-//        InjectorBuilder newInjector = new InjectorBuilder();
-//        newInjector.module(new InjectorBuilder() {
-//            protected void build() {
-//                instance(new Person("Steve", "McQueen"), ilk(Person.class), null);
-//            }
-//        });
-//        Injector injector = newInjector.newInjector();
-//        stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil/test").getAbsoluteFile().toURI());
-//        ByteArrayOutputStream out = new ByteArrayOutputStream();
-//        StreamResult stream = new StreamResult(out);
-//        TransformerHandler handler = newTransformerHandler(stream);
-//        stencils.stencil(injector, URI.create("var.xhtml"), handler);
-//        String control = slurp(getClass().getResourceAsStream("test/var.out.xhtml"));
-//        String actual = slurp(new ByteArrayInputStream(out.toByteArray()));
-//        assertXMLEqual(control, actual);
-//    }
-//
+    /** Test variable assignments. */
+    @Test
+    public void get() throws IOException {
+        InjectorBuilder newInjector = new InjectorBuilder();
+        newInjector.module(new InjectorBuilder() {
+            protected void build() {
+                instance(new Person("George", "Washington"), ilk(Person.class), null);
+            }
+        });
+        StencilFactory stencils = new StencilFactory();
+        stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil").getAbsoluteFile().toURI());
+        Injector injector = newInjector.newInjector();
+        StringWriter output = new StringWriter();
+        stencils.stencil(injector, URI.create("get.txt"), output);
+        String control = slurp(getClass().getResourceAsStream("get.out.txt"));
+        String actual = output.toString();
+        assertEquals(actual, control);
+    }
+
     /**
      * Slurp the entire input stream into a single string.
      * 
@@ -144,7 +122,6 @@ public class StencilTest {
         String control = slurp(getClass().getResourceAsStream("if.out.txt"));
         String actual = output.toString();
         assertEquals(actual, control);
-
     }
 //
 //    /** Test default. */
