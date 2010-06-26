@@ -50,15 +50,28 @@ public class Handler extends URLStreamHandler implements ResourceResolver {
     @Override
     public URLConnection openConnection(URL u) throws IOException {
         String host = u.getHost();
-        ClassLoader classLoader = null;
-        if ("thread".equals(host)) {
-            classLoader = Thread.currentThread().getContextClassLoader();
-        } else if ("system".equals(host)) {
-            classLoader = ClassLoader.getSystemClassLoader();
-        } else if ("class".equals(host)) {
-            classLoader = getClass().getClassLoader();
-        }
+        ClassLoader classLoader = chooseClassLoader(host);
         return classLoader.getResource(u.getPath().substring(1)).openConnection();
+    }
+
+    /**
+     * Choose the class loader based on the host string. The host string is one
+     * of "thread" for the thread class loader, "system" for the system class
+     * loader, otherwise the class loader of this <code>Handler</code> instance
+     * is returned by default.
+     * 
+     * @param host
+     *            The host string.
+     * @return The class loader indicated by the host string.
+     */
+    ClassLoader chooseClassLoader(String host) {
+        if ("thread".equals(host)) {
+            return Thread.currentThread().getContextClassLoader();
+        }
+        if ("system".equals(host)) {
+            return ClassLoader.getSystemClassLoader();
+        } 
+        return getClass().getClassLoader();
     }
 
     /**
@@ -81,7 +94,7 @@ public class Handler extends URLStreamHandler implements ResourceResolver {
         super.parseURL(u, spec, start, limit);
         String host = u.getHost();
         if (!("thread".equals(host) || "system".equals(host) || "class".equals(host))) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("Invalid host type."); 
         }
     }
 }
