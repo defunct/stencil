@@ -10,6 +10,7 @@ import java.io.InputStreamReader;
 import java.io.Writer;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -831,7 +832,7 @@ public class StencilFactory {
                         throw new StencilException(e, "Cannot evaluate [%s] at line [%d] of [%s].", expression, line, uri);
                     }
                 }
-                type = getActualType(getter.getGenericType(), type);
+                type = getActualType(getter.getGenericType(), type, new LinkedList<Map<TypeVariable<?>, Type>>());
             }
         }
         if (object == null) {
