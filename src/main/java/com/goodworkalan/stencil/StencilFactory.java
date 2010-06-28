@@ -373,7 +373,7 @@ public class StencilFactory {
     }
 
     /** The regular expression to match a start or end command. */
-    private final static Pattern COMMAND = Pattern.compile("^((?:[^@]|@@)*)@(@|[A-Z][a-z]+(?:\\.[A-Za-z][A-Za-z0-9]+)?)(?:(\\(|!)([^)]*)\\))?(.*)$");
+    private final static Pattern COMMAND = Pattern.compile("^((?:[^@]|@@)*)@(@|[A-Z][a-zA-Z]+(?:\\.[A-Za-z][A-Za-z0-9]+)?)(?:!|\\(([^)]*)\\))?(.*)$");
 
     /**
      * Write the given string to the the given writer followed by a new line if
@@ -515,7 +515,7 @@ public class StencilFactory {
                     break;
                 }
                 String before = command.group(1);
-                after = command.group(5);
+                after = command.group(4);
                 if (terminal != null || !isWhitespace(before)) {
                     terminal = after;
                     if (!stack.getLast().skip) {
@@ -523,11 +523,7 @@ public class StencilFactory {
                     }
                 }
                 String name = command.group(2).trim();
-                String bracket = command.group(3);
-                if (bracket == null || bracket.equals("")) {
-                    bracket = "!";
-                }
-                String payload = command.group(4);
+                String payload = command.group(3);
                 Ilk.Box ilk = getContext(stack);
                 Type ilkType = ilk == null ? null : ilk.key.get(0).type;
                 count++;
@@ -651,6 +647,32 @@ public class StencilFactory {
                         }
                         stack.removeLast();
                     }
+                } else if (name.equals("ElseIf")) {     
+                    if (!isBlank(payload)) {
+                        Ilk.Box value = get(ilkType, payload, getSelected(stack), index, stencil.page.uri);
+                        boolean condition = false;
+                        if (value != null) {
+                            Class<?> rawClass = getRawClass(value.key.type);
+                            if (rawClass.equals(Boolean.class)) {
+                                condition = value.cast(new Ilk<Boolean>(Boolean.class));
+                            } else if (Collection.class.isAssignableFrom(rawClass)) {
+                                condition = ! ((Collection<?>) value.object).isEmpty();
+                            } else if (Iterator.class.isAssignableFrom(rawClass)) {
+                                condition = ((Iterator<?>) value.object).hasNext();
+                            } else {
+                                condition = true;
+                            }
+                        }
+                        if (output != null) {
+                            stack.getLast().skip = !condition;
+                            stack.getLast().met = !condition;
+                        }
+                    } else {
+                        if (!name.equals(stack.getLast().command)) {
+                            throw new IllegalStateException();
+                        }
+                        stack.removeLast();
+                    }
                 } else if (name.equals("Else")) {
                     if (!"If".equals(stack.getLast().command)) {
                         throw new IllegalStateException();
@@ -716,7 +738,7 @@ public class StencilFactory {
                         stack.getLast().stencils.put(alias + "." + entry.getKey(), entry.getValue());
                     }
                 } else if (name.equals("Stencil")) {
-                    if (bracket.equals("!")) {
+                    if (payload == null) {
                         stack.removeLast();
                     } else {
                         stack.addLast(new Level<T>());

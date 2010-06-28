@@ -434,7 +434,30 @@ public class StencilTest {
         String actual = output.toString();
         assertEquals(actual, control);
     }
-    
+
+    /**
+     * Run the given script with the given injector and test for the given
+     * expected output.
+     * 
+     * @param injector
+     *            The injector.
+     * @param script
+     *            The script.
+     * @param expected
+     *            The expected output.
+     * @throws IOException
+     *             For any I/O error.
+     */
+    private void test(Injector injector, String script, String expected) throws IOException {
+        StencilFactory stencils = new StencilFactory();
+        stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil").getAbsoluteFile().toURI());
+        StringWriter output = new StringWriter();
+        stencils.stencil(injector, URI.create(script), output);
+        String actual = output.toString();
+        String control = slurp(getClass().getResourceAsStream(expected));
+        assertEquals(actual, control);
+    }
+
     /** Test check dirty. */
     @Test
     public void checkDirty() throws IOException, InterruptedException {
@@ -465,6 +488,23 @@ public class StencilTest {
         control = slurp(getClass().getResourceAsStream("nothing.txt"));
         actual = output.toString();
         assertEquals(actual, control);
+    }
+    
+    /** Get an injector with a person with a null first name. */
+    private Injector person() {
+        InjectorBuilder newInjector = new InjectorBuilder();
+        newInjector.module(new InjectorBuilder() {
+            protected void build() {
+                instance(new Person(null, "Washington"), ilk(Person.class), null);
+            }
+        });
+        return newInjector.newInjector();
+    }
+    
+    /** Test else if. */
+    @Test
+    public void elseIf() throws IOException {
+        test(person(), "else-if.txt", "else-if.out.txt"); 
     }
 }
 
