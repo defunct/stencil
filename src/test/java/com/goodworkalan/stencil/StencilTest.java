@@ -87,6 +87,22 @@ public class StencilTest {
         return string.toString();
     }
 
+    /** Create an injector around a clique. */
+    public Injector clique() {
+        InjectorBuilder newInjector = new InjectorBuilder();
+        newInjector.module(new InjectorBuilder() {
+            protected void build() {
+                Clique clique = new Clique();
+                clique.people.add(new Person("George", "Washington"));
+                clique.people.add(new Person("John", "Adams"));
+                clique.people.add(new Person("Thomas", "Jefferson"));
+                clique.people.add(new Person("James", "Madison"));
+                instance(clique, ilk(Clique.class), null);
+            }
+        });
+        return newInjector.newInjector();
+    }
+
     /** Test each. */
     @Test
     public void each() throws IOException {
@@ -103,7 +119,7 @@ public class StencilTest {
         });
         StencilFactory stencils = new StencilFactory();
         stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil").getAbsoluteFile().toURI());
-        Injector injector = newInjector.newInjector();
+        Injector injector = clique();
         StringWriter output = new StringWriter();
         stencils.stencil(injector, URI.create("each.txt"), output);
         String control = slurp(getClass().getResourceAsStream("each.out.txt"));
@@ -505,6 +521,12 @@ public class StencilTest {
     @Test
     public void elseIf() throws IOException {
         test(person(), "else-if.txt", "else-if.out.txt"); 
+    }
+    
+    /** Test indent. */
+    @Test
+    public void eachIndent() throws IOException {
+        test(clique(), "each-indent.txt", "each-indent.out.txt"); 
     }
 }
 

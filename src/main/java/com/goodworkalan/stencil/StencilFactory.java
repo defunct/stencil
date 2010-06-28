@@ -484,6 +484,15 @@ public class StencilFactory {
                             }
                         }
                         blankLines.clear();
+                    } else if (stack.getLast().command.equals("Each")) {
+                        if (output == null || !stack.getLast().each.hasNext()) {
+                            stack.removeLast();
+                        } else {
+                            stack.getLast().instance = stack.getLast().actualizer.actual().box(stack.getLast().each.next());
+                            index = stack.getLast().index;
+                            after = null; // stack.getLast().after;
+                            continue;
+                        }
                     }
                 } else {
                     if (!stack.getLast().skip) {
@@ -592,6 +601,12 @@ public class StencilFactory {
                         }
                     }
                 } else if (name.equals("Get")) {
+                    if (terminal == null) {
+                        if (!stack.getLast().skip) {
+                            print(output, before);
+                        }
+                        terminal = after;
+                    }
                     String[] pathway = payload.split("\\s*=>\\s*");
                     String path = null;
                     String escaperName = "*";
@@ -717,8 +732,10 @@ public class StencilFactory {
                         }
                     }
                 } else if (name.equals("Separator")) {
-                    if (payload.equals("")) {
-                        
+                    if (payload == null) {
+                        if (!stack.getLast().each.hasNext()) {
+                            stack.getLast().skip = true;
+                        }
                     } else {
                         if (stack.getLast().each.hasNext()) {
                             print(output, payload);

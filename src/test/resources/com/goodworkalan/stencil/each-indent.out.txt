@@ -1,0 +1,9 @@
+The following line indents.
+    George
+    (and)
+    John
+    (and)
+    Thomas
+    (and)
+    James
+The above line indents.

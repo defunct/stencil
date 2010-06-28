@@ -1,0 +1,7 @@
+@Bind(com.goodworkalan.stencil.Clique)
+The following line indents.
+    @Each(people)
+    @Get(firstName)
+    @Separator
+    (and)
+The above line indents.
