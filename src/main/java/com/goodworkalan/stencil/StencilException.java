@@ -28,8 +28,6 @@ public class StencilException extends RuntimeException {
      * Create a Stencil exception using the given message format and format
      * arguments to create a message.
      * 
-     * @param cause
-     *            The cause.
      * @param message
      *            The message format.
      * @param arguments

@@ -246,7 +246,7 @@ public class StencilFactory {
      * 
      * @param stack
      *            The stack.
-     * @param qName
+     * @param name
      *            The qualified name of the stencil.
      * @return The boxed type of the context object.
      */
@@ -311,13 +311,8 @@ public class StencilFactory {
      *            The injector.
      * @param uri
      *            The stencil URI.
-     * @param content
-     *            The SAX content handler or null if this is just a static
-     *            check.
-     * @param lexical
-     *            The SAX lexical handler.
-     * @param dtd
-     *            The SAX DTD handler.
+     * @param output
+     *            The output.
      * @return The compiled stencil page.
      */
     private Page compile(Injector injector, URI uri, Writer output) {
@@ -348,13 +343,10 @@ public class StencilFactory {
      *            The injector.
      * @param uri
      *            The stencil URI.
-     * @param content
-     *            The SAX content handler or null if this is just a static
-     *            check.
-     * @param lexical
-     *            The SAX lexical handler.
-     * @param dtd
-     *            The SAX DTD handler.
+     * @param connection
+     *            A URL connection opened from a URL created from the URI.
+     * @param output
+     *            The output.
      * @return The compiled stencil page.
      */
     private Page compile(Injector injector, URI uri, URLConnection connection, Writer output) {
@@ -878,8 +870,6 @@ public class StencilFactory {
      *            The uri of the stencil.
      * @param stencil
      *            The stencil.
-     * @param nested
-     *            The nested content.
      * @param output
      *            The output writer or null if this is a static analysis.
      * @return A page containing the lines and stencils found in the stencil.
