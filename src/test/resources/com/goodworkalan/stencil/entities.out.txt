@@ -1,0 +1,2 @@
+This is a test of (This &lt;is not&gt; really &amp; a name.) escapes.
+This is also a test of (This &lt;is not&gt; really &amp; a name.) escapes.

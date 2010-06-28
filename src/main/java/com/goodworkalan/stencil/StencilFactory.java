@@ -2,10 +2,10 @@ package com.goodworkalan.stencil;
 
 import static com.goodworkalan.ilk.Types.getActualType;
 import static com.goodworkalan.ilk.Types.getRawClass;
+import static com.goodworkalan.stencil.StencilException.$;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Writer;
 import java.lang.reflect.ParameterizedType;
@@ -19,6 +19,7 @@ import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -124,25 +125,6 @@ public class StencilFactory {
     }
 
     /**
-     * Open the input stream of the given url. This method exists to wrap the
-     * <code>IOException</code> and to make <code>IOException</code> handling
-     * testable.
-     * 
-     * @param uri
-     *            The URI.
-     * @return The opened input stream.
-     * @exception StencilException
-     *                If the stream cannot be opened.
-     */
-    InputStream getInputStream(URI uri) {
-        try {
-            return uri.toURL().openStream();
-        } catch (IOException e) {
-            throw new StencilException(e, "Unable to open stencil [%s].", uri);
-        }
-    }
-
-    /**
      * Execute the stencil at the given URI using the given injector to obtain
      * context objects emitting a document to the given output writer.
      * 
@@ -215,6 +197,45 @@ public class StencilFactory {
             Level<T> level = iterator.previous();
             if (level.ilk != null) {
                 return level.ilk;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get a map of all the classes that have been imported into the current
+     * scope.
+     * 
+     * @param <T>
+     *            The actualizer type variable of the stack.
+     * @param stack
+     *            The stack.
+     * @return A map of class names to type keys.
+     */
+    private <T> Map<String, Ilk.Key> getClasses(LinkedList<Level<T>> stack) {
+        Map<String, Ilk.Key> classes = new HashMap<String, Ilk.Key>();
+        for (Level<T> level : stack) {
+            classes.putAll(level.classes);
+        }
+        return classes;
+    }
+
+    /**
+     * Get the <code>Escaper</code> assigned to the top most level.
+     * 
+     * @param <T>
+     *            The actualizer type variable of the stack.
+     * @param stack
+     *            The stack.
+     * @return A map of class names to type keys.
+     */
+    private <T> Escaper getEscaper(LinkedList<Level<T>> stack, String name) {
+        ListIterator<Level<T>> iterator = stack.listIterator(stack.size());
+        while (iterator.hasPrevious()) {
+            Level<T> level = iterator.previous();
+            Escaper escaper = level.escapers.get(name);
+            if (escaper != null) {
+                return escaper;
             }
         }
         return null;
@@ -314,7 +335,7 @@ public class StencilFactory {
     }
 
     /**
-     * Compile and execute the stencil input stream of the given url connnection
+     * Compile and execute the stencil input stream of the given URL connection
      * obtained from the given url returning a stencil page for caching. The
      * injector will be used to obtain context objects for the stencils.
      * <p>
@@ -382,9 +403,9 @@ public class StencilFactory {
      * @throws IOException
      *             For any I/O error.
      */
-    private void print(Writer output, String string) throws IOException {
+    private void print(Writer output, CharSequence string) throws IOException {
         if (output != null) {
-            output.write(string);
+            output.append(string);
         }
     }
 
@@ -521,13 +542,79 @@ public class StencilFactory {
                         Ilk.Key key = stack.getLast().ilk.key.get(0);
                         stack.getLast().instance = injector.instance(key, null);
                     }
-                } else if (name.equals("Get")) {
-                    if (isBlank(payload)) {
-                        throw new StencilException("Missing Get path at line [%s] of [%s].", index, stencil.page.uri);
+                } else if (name.equals("Escape")) {
+                    String[] escape = payload.split("\\s*=>\\s*");
+                    String key = "*";
+                    String escaper = null;
+                    if (escape.length == 1) {
+                        escaper = escape[0];
+                    } else if (escape.length == 2) {
+                        key = escape[0];
+                        escaper = escape[1];
                     }
-                    String value = getString(ilkType, payload, getSelected(stack), index, stencil.page.uri);
+                    if (escaper == null) {
+                        throw new StencilException("Missing Escape details at line [%s] of [%s].", index, stencil.page.uri);
+                    }
+                    URL url = null;
+                    Class<?> escaperClass = null;
+                    Ilk.Key classKey = getClasses(stack).get(escaper);
+                    if (classKey != null) {
+                        escaperClass = getRawClass(classKey.type);
+                    }
+                    if (escaperClass == null) {
+                        url = Thread.currentThread().getContextClassLoader().getResource(key);
+                        if (url == null) {
+                            try {
+                                Pattern identifier = Pattern.compile("[$_\\w][$_\\w\\d]+(?:\\.[$_\\w][$_\\w\\d]+)");
+                                if (identifier.matcher(escaper).matches()) {
+                                    escaperClass = Thread.currentThread().getContextClassLoader().loadClass(escaper);
+                                }
+                            } catch (ClassNotFoundException e) {
+                            }
+                            if (escaperClass == null) {
+                                URI resource = getBaseURI().resolve(escaper);
+                                if (resource != null) {
+                                    url = getURL(injector, resource);
+                                }
+                            }
+                        }
+                    }
+                    if (url != null) {
+                        Map<Integer, String> entities = new HashMap<Integer, String>();
+                        BufferedReader entityLines = new BufferedReader(new InputStreamReader(url.openStream()));
+                        String entityLine;
+                        while ((entityLine = entityLines.readLine()) != null) {
+                            String[] mapping = entityLine.split("\\s+");
+                            entities.put(Integer.parseInt(mapping[0]), mapping[1]);
+                        }
+                        stack.getLast().escapers.put(key, new CharCodeEscaper(entities));
+                    } else {
+                        try {
+                            stack.getLast().escapers.put(key, (Escaper) escaperClass.newInstance());
+                        } catch (Throwable e) {
+                            throw new StencilException($(e), "Cannot create an instance of [%s] at line [%d] of [%s].", escaperClass, index, stencil.page.uri);
+                        }
+                    }
+                } else if (name.equals("Get")) {
+                    String[] pathway = payload.split("\\s*=>\\s*");
+                    String path = null;
+                    String escaperName = "*";
+                    if (pathway.length == 1) {
+                        path = pathway[0];
+                    } else if (pathway.length == 2) {
+                        escaperName = pathway[0];
+                        path = pathway[1];
+                    }
+                    if (path == null) {
+                        throw new StencilException("Invalid or missing Get path at line [%s] of [%s].", index, stencil.page.uri);
+                    }
+                    String value = getString(ilkType, path, getSelected(stack), index, stencil.page.uri);
                     if (!stack.getLast().skip ) {
-                        print(output, value);
+                        Escaper escaper = getEscaper(stack, escaperName);
+                        if (escaper == null) {
+                            throw new StencilException("Unknown escaper at line [%s] of [%s].", index, stencil.page.uri);
+                        }
+                        print(output, escaper.escape(value));
                     }
                 } else if (name.equals("If") || name.equals("Unless")) {
                     if (!isBlank(payload)) {
@@ -704,7 +791,7 @@ public class StencilFactory {
      *            The line.
      * @return True if the line is a comment.
      */
-    public boolean isComment(String line) {
+    private boolean isComment(String line) {
         int index = 0, stop = line.length();
         while (index < stop) {
             if (!Character.isWhitespace(line.charAt(index))) {
@@ -722,9 +809,17 @@ public class StencilFactory {
         }
         return false;
     }
-    public boolean isWhitespace(String string) {
-        for (int i = 0, stop = string.length(); i < stop; i++) {
-            if (!Character.isWhitespace(string.charAt(i))) {
+
+    /**
+     * Determine if the given line is entirely whitespace.
+     * 
+     * @param line
+     *            The line.
+     * @return True if the line is entirely whitespace.
+     */
+    private boolean isWhitespace(String line) {
+        for (int i = 0, stop = line.length(); i < stop; i++) {
+            if (!Character.isWhitespace(line.charAt(i))) {
                 return false;
             }
         }
@@ -756,6 +851,7 @@ public class StencilFactory {
         
         // Add a bogus top element to forgo empty stack tests.
         stack.addLast(new Level<T>());
+        stack.getLast().escapers.put("*", new Escaper());
         
         try {
             compile(injector, stack, stencil, null, null, output);

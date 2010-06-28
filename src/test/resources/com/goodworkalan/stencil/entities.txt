@@ -1,0 +1,5 @@
+@Bind(com.goodworkalan.stencil.Person)
+@Escape(html => html.txt)
+@Escape(html.txt)
+This is a test of (@Get(html => firstName)) escapes.
+This is also a test of (@Get(firstName)) escapes.

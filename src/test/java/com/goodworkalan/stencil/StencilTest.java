@@ -397,6 +397,25 @@ public class StencilTest {
         assertEquals(actual, control);
     }
 
+    /** Test else false. */
+    @Test
+    public void entities() throws IOException {
+        InjectorBuilder newInjector = new InjectorBuilder();
+        newInjector.module(new InjectorBuilder() {
+            protected void build() {
+                instance(new Person("This <is not> really & a name.", "Washington"), ilk(Person.class), null);
+            }
+        });
+        StencilFactory stencils = new StencilFactory();
+        stencils.setBaseURI(new File(new File("."), "src/test/resources/com/goodworkalan/stencil").getAbsoluteFile().toURI());
+        Injector injector = newInjector.newInjector();
+        StringWriter output = new StringWriter();
+        stencils.stencil(injector, URI.create("entities.txt"), output);
+        String actual = output.toString();
+        String control = slurp(getClass().getResourceAsStream("entities.out.txt"));
+        assertEquals(actual, control);
+    }
+
     /** Test stencil indent. */
     @Test
     public void stencilIndent() throws IOException {

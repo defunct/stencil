@@ -40,6 +40,33 @@ public class StencilException extends RuntimeException {
     }
 
     /**
+     * Assert that the given exception is a reflection related
+     * <code>Exception</code>. .
+     * 
+     * @param e
+     *            The throwable.
+     * @return The throwable.
+     * @exception RuntimeException
+     *                if the throwable is an <code>RuntimeException</code> but
+     *                not an <code>IllegalArgumentException</code>.
+     * @exception Error
+     *                if the throwable is an <code>Error</code> but not an
+     *                <code>ExceptionInInitializerError</code>.
+     */
+    public static Throwable $(Throwable e) {
+        if (e instanceof Error) { 
+            if (!(e instanceof ExceptionInInitializerError)) {
+                throw (Error) e;
+            }
+        } else if (e instanceof RuntimeException) {
+            if (!(e instanceof IllegalArgumentException)) {
+                throw (RuntimeException) e;
+            }
+        }
+        return e;
+    }
+
+    /**
      * Convert any classes in the format arguments to the value of their
      * <code>getName()</code> method since the default implementation of
      * <code>toString()</code> for classes annoys me.

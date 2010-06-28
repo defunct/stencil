@@ -1,9 +1,7 @@
 package com.goodworkalan.stencil;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 
 import com.goodworkalan.ilk.Ilk;
@@ -41,6 +39,9 @@ class Level<T> {
     
     /** The content after this command on the line where it began. */
     public String after;
+    
+    /** The escapers used to escape character sequences. */
+    public Map<String, Escaper> escapers = new HashMap<String, Escaper>();
 
     /** The iterator of the collection traversed by each. */
     public Iterator<T> each = null;
@@ -52,5 +53,5 @@ class Level<T> {
     public Map<String, Stencil> stencils = new HashMap<String, Stencil>();
     
     /** The list of classes brought into the Java namespace. */
-    public List<Ilk.Key> classes = new ArrayList<Ilk.Key>();
+    public Map<String, Ilk.Key> classes = new HashMap<String, Ilk.Key>();
 }
