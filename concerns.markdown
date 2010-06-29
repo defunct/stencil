@@ -41,6 +41,10 @@ to use the path, if you don't have to.
 Alternatively, you could make ad hoc navigation a fall back, which would be
 simplier conceptually, but not "type-safe".
 
+Ah, special type, or really, just stipulate a map. Now the equality of paths
+becomes an issue, what makes them truely equal? No, you can dictate that only
+Java identifier paths are allows, so no problem.
+
 ## Get with Local Bind
 
 Might be really nice to have a one liner Bind and Get, or rather, an inline bind
