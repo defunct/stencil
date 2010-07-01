@@ -1,0 +1,2 @@
+@Bind(java.util.ArrayList<com.goodworkalan.stencil.Person>/com.goodworkalan.stencil.Important)
+@Each()@Get(firstName)@Separator(, )@Each

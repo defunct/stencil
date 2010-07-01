@@ -1,4 +1,4 @@
-/* Copyright Alan Gutierrez 2006 */
+ /* Copyright Alan Gutierrez 2006 */
 package com.goodworkalan.stencil;
 
 import static org.testng.Assert.assertEquals;
@@ -11,10 +11,12 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringWriter;
 import java.net.URI;
+import java.util.ArrayList;
 
 import org.testng.annotations.Test;
 
 import com.goodworkalan.comfort.io.Files;
+import com.goodworkalan.ilk.Ilk;
 import com.goodworkalan.ilk.inject.Injector;
 import com.goodworkalan.ilk.inject.InjectorBuilder;
 
@@ -527,6 +529,29 @@ public class StencilTest {
     @Test
     public void eachIndent() throws IOException {
         test(clique(), "each-indent.txt", "each-indent.out.txt"); 
+    }
+    
+    /** Create an array of people. */
+    public Injector people() {
+        InjectorBuilder newInjector = new InjectorBuilder();
+        newInjector.module(new InjectorBuilder() {
+            protected void build() {
+                ArrayList<Person> people = new ArrayList<Person>();
+                people.add(new Person("George", "Washington"));
+                people.add(new Person("John", "Adams"));
+                people.add(new Person("Thomas", "Jefferson"));
+                people.add(new Person("James", "Madison"));
+                instance(people, new Ilk<ArrayList<Person>>(){}, null);
+                instance(people, new Ilk<ArrayList<Person>>(){}, Important.class);
+            }
+        });
+        return newInjector.newInjector();
+    }
+
+    /** Test binding. */
+    @Test
+    public void bindings() throws IOException {
+        test(people(), "bindings.txt", "bindings.out.txt");
     }
 }
 

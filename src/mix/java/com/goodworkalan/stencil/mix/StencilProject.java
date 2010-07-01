@@ -28,6 +28,7 @@ public class StencilProject implements ProjectModule {
                     .production("com.github.bigeasy.diffuse/diffuse/0.+1")
                     .production("com.github.bigeasy.ilk/ilk-inject/0.+1")
                     .production("com.github.bigeasy.ilk/ilk-loader/0.+1")
+                    .production("com.github.bigeasy.ilk/ilk-inject-alias/0.+1")
                     .development("org.testng/testng-jdk15/5.10")
                     .development("com.github.bigeasy.comfort-io/comfort-io/0.+1")
                     .end()

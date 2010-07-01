@@ -8,6 +8,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Writer;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
@@ -34,12 +38,15 @@ import org.xml.sax.SAXException;
 
 import com.goodworkalan.diffuse.Diffuser;
 import com.goodworkalan.ilk.Ilk;
+import com.goodworkalan.ilk.IlkReflect;
 import com.goodworkalan.ilk.inject.Injector;
+import com.goodworkalan.ilk.inject.InjectorBuilder;
+import com.goodworkalan.ilk.inject.Vendor;
+import com.goodworkalan.ilk.inject.alias.AliasVendor;
 import com.goodworkalan.ilk.loader.IlkLoader;
 import com.goodworkalan.permeate.ParseException;
 import com.goodworkalan.permeate.Part;
 import com.goodworkalan.permeate.Path;
-import com.goodworkalan.reflective.ReflectiveException;
 import com.goodworkalan.reflective.getter.Getter;
 import com.goodworkalan.reflective.getter.Getters;
 
@@ -172,12 +179,12 @@ public class StencilFactory {
      *            The stack.
      * @return The value.
      */
-    private <T> Object getSelected(LinkedList<Level<T>> stack) {
+    private <T> Ilk.Box getSelected(LinkedList<Level<T>> stack) {
         ListIterator<Level<T>> iterator = stack.listIterator(stack.size());
         while (iterator.hasPrevious()) {
             Level<T> level = iterator.previous();
             if (level.instance != null) {
-                return level.instance.object;
+                return level.instance;
             }
         }
         return null;
@@ -260,6 +267,24 @@ public class StencilFactory {
             }
         }
         return null;
+    }
+
+    /**
+     * Get the top most injector on the stack.
+     * 
+     * @param stack
+     *            The stack.
+     * @return The top most injector.
+     */
+    private <T> Injector getInjector(LinkedList<Level<T>> stack) {
+        ListIterator<Level<T>> iterator = stack.listIterator(stack.size());
+        for (;;) {
+            Level<T> level = iterator.previous();
+            Injector injector = level.injector;
+            if (injector != null) {
+                return injector;
+            }
+        }
     }
 
     /**
@@ -400,6 +425,23 @@ public class StencilFactory {
             output.append(string);
         }
     }
+    
+    private <V> Vendor<?> createAlias(Ilk.Box key, Class<? extends Annotation> qualifier, Ilk.Box fromKey, Class<? extends Annotation> fromQualifier, int line, URI uri) {
+        Ilk.Box[] arguments = new Ilk.Box[] {
+                key,
+                new Ilk<Class<? extends Annotation>>() {}.box(qualifier),
+                fromKey,
+                new Ilk<Class<? extends Annotation>>() {}.box(fromQualifier)
+        };
+        Class<?>[] parameters = new Class<?>[] { Ilk.class, Class.class, Ilk.class, Class.class };
+        try {
+            Constructor<?> constructor = AliasVendor.class.getConstructor(parameters);
+            Ilk<AliasVendor<?>> vendorIlk = new Ilk<AliasVendor<?>>() {};
+            return IlkReflect.newInstance(IlkReflect.REFLECTOR, vendorIlk.key, constructor, arguments).cast(vendorIlk);
+        } catch (Throwable e) {
+            throw new StencilException($(e), "Cannot create alias at line [%d] in [%s].",  line, uri);
+        }
+    }
 
     /**
      * Get the number of spaces by which the line is indented.
@@ -415,7 +457,7 @@ public class StencilFactory {
         }
         return count;
     }
-    
+
     /**
      * Compile and possibly emit a section of a Stencil.
      * 
@@ -435,7 +477,7 @@ public class StencilFactory {
      * @throws SAXException
      *             For any error raised by the parser.
      */
-    private <T> Stencil[] compile(Injector injector, LinkedList<Level<T>> stack, Stencil stencil, Stencil nested, String blockName, Writer output)
+    private <T> Stencil[] compile(LinkedList<Level<T>> stack, Stencil stencil, Stencil nested, String blockName, Writer output)
     throws IOException {
         List<String> lines = stencil.page.lines;
         int index = stencil.index;
@@ -530,14 +572,75 @@ public class StencilFactory {
                 count++;
                 Stencil subStencil = getStencil(stack, name);
                 if (name.equals("Bind")) {
+                    String[] binding = payload.split("\\s*=>\\s*");
+                    String[] from = binding[binding.length == 1 ? 0 : 1].split("/");
+                    final Ilk.Box fromIlk;
+                    final Class<? extends Annotation> fromQualifier;
                     try {
-                        stack.getLast().ilk = IlkLoader.fromString(Thread.currentThread().getContextClassLoader(), payload, Collections.<String, Class<?>>emptyMap());
+                        fromIlk = IlkLoader.fromString(Thread.currentThread().getContextClassLoader(), from[0], Collections.<String, Class<?>>emptyMap());
                     } catch (ClassNotFoundException e) {
                         throw new StencilException(e, "Cannot load type [%s] at line [%s] of [%s].", payload, index, stencil.page.uri);
                     }
+                    if (from.length == 2) {
+                        try {
+                            fromQualifier = Thread.currentThread().getContextClassLoader().loadClass(from[1]).asSubclass(Annotation.class);
+                        } catch (ClassNotFoundException e) {
+                            throw new StencilException(e, "Cannot load qualifier [%s] at line [%d] of [%s].", payload, index, stencil.page.uri);
+                        }
+                    } else {
+                        fromQualifier = null;
+                    }
+                    stack.getLast().ilk = fromIlk;
                     if (output != null) {
+                        InjectorBuilder module;
+                        if (binding.length == 1) {
+                            final Vendor<?> bound = createAlias(fromIlk, Bound.class, fromIlk, fromQualifier, index, stencil.page.uri);
+                            module = new InjectorBuilder() {
+                                protected void build() {
+                                    vendor(bound);
+                                }
+                            };
+                        } else {
+                            String[] to;
+                            Ilk.Box toIlk;
+                            Class<? extends Annotation> toQualifier;
+                            to = binding[0].split("/");
+                            try {
+                                toIlk = IlkLoader.fromString(Thread.currentThread().getContextClassLoader(), to[0], Collections.<String, Class<?>>emptyMap());
+                            } catch (ClassNotFoundException e) {
+                                throw new StencilException(e, "Cannot load type [%s] at line [%s] of [%s].", from[0], index, stencil.page.uri);
+                            }
+                            if (from.length == 2) {
+                                try {
+                                    toQualifier = Thread.currentThread().getContextClassLoader().loadClass(to[1]).asSubclass(Annotation.class);
+                                } catch (ClassNotFoundException e) {
+                                    throw new StencilException(e, "Cannot load qualifier [%s] at line [%d] of [%s].", from[1], index, stencil.page.uri);
+                                }
+                            } else {
+                                toQualifier = null;
+                            }
+                            final Vendor<?> bound = createAlias(fromIlk, Bound.class, toIlk, toQualifier, index, stencil.page.uri);
+                            final Vendor<?> alias = createAlias(toIlk, toQualifier, fromIlk, fromQualifier, index, stencil.page.uri);
+                            module = new InjectorBuilder() {
+                                public void build() {
+                                    vendor(bound);
+                                    vendor(alias);
+                                }
+                            };
+                        }
+                        Injector parent;
+                        Injector topInjector = stack.getLast().injector;
+                        if (topInjector != null) {
+                            parent = topInjector.getParent();
+                        } else {
+                            parent = getInjector(stack);
+                        }
+                        InjectorBuilder childInjector = parent.newInjector();
+                        childInjector.module(module);
+                        childInjector.scope(BlockScoped.class);
+                        stack.getLast().injector = childInjector.newInjector();
                         Ilk.Key key = stack.getLast().ilk.key.get(0);
-                        stack.getLast().instance = injector.instance(key, null);
+                        stack.getLast().instance = getInjector(stack).instance(key, Bound.class);
                     }
                 } else if (name.equals("Escape")) {
                     String[] escape = payload.split("\\s*=>\\s*");
@@ -571,7 +674,7 @@ public class StencilFactory {
                             if (escaperClass == null) {
                                 URI resource = getBaseURI().resolve(escaper);
                                 if (resource != null) {
-                                    url = getURL(injector, resource);
+                                    url = getURL(getInjector(stack), resource);
                                 }
                             }
                         }
@@ -686,7 +789,7 @@ public class StencilFactory {
                     }
                     stack.getLast().skip = output != null && !stack.getLast().met;
                 } else if (name.equals("Each")) {
-                    if (isBlank(payload)) {
+                    if (payload == null) {
                         if (!"Each".equals(stack.getLast().command)) {
                             throw new StencilException("End Each encountered without Each at line [%s] of [%s].", index, stencil.page.uri);
                         }
@@ -698,7 +801,12 @@ public class StencilFactory {
                             after = stack.getLast().after;
                         }
                     } else {
-                        Ilk.Box value = get(ilkType, payload, getSelected(stack), index, stencil.page.uri);
+                        Ilk.Box value;
+                        if (payload.equals("")) {
+                            value = getSelected(stack);
+                        } else {
+                            value = get(ilkType, payload, getSelected(stack), index, stencil.page.uri);
+                        }
                         if (!Collection.class.isAssignableFrom(getRawClass(value.key.type))) {
                             throw new StencilException("Missing path attribute for each at line [%s] of [%s].", index, stencil.page.uri);
                         }
@@ -743,7 +851,7 @@ public class StencilFactory {
                     }
                     uri = stencil.page.uri.resolve(uri);
                     String alias = importation[0];
-                    for (Map.Entry<String, Stencil> entry : compile(injector, uri, null).stencils.entrySet()) {
+                    for (Map.Entry<String, Stencil> entry : compile(getInjector(stack), uri, null).stencils.entrySet()) {
                         stack.getLast().stencils.put(alias + "." + entry.getKey(), entry.getValue());
                     }
                 } else if (name.equals("Stencil")) {
@@ -756,7 +864,7 @@ public class StencilFactory {
                     }
                 } else if (name.equals("Nested")) {
                     if (nested != null) {
-                        nested = compile(injector, stack, nested, null, payload, output)[0];
+                        nested = compile(stack, nested, null, payload, output)[0];
                     }
                 } else if (subStencil != null) {
 //                    if (name.equals(stack.getLast().command) && bracket.equals("!")) {
@@ -774,7 +882,7 @@ public class StencilFactory {
 //                        if (indent > lastIndent) {
 //                            stack.getLast().indent = indent;
 //                        }
-                        Stencil result = compile(injector, stack, subStencil, new Stencil(stencil.page, after, index, count, indent), null, output)[1];
+                        Stencil result = compile(stack, subStencil, new Stencil(stencil.page, after, index, count, indent), null, output)[1];
                         after = result.after;
                         count = result.count;
                         index = result.index;
@@ -881,9 +989,10 @@ public class StencilFactory {
         // Add a bogus top element to forgo empty stack tests.
         stack.addLast(new Level<T>());
         stack.getLast().escapers.put("*", new Escaper());
+        stack.getLast().injector = injector.newInjector().newInjector(); 
         
         try {
-            compile(injector, stack, stencil, null, null, output);
+            compile(stack, stencil, null, null, output);
         } catch (IOException e) {
             throw new StencilException(e, "Cannot emit stencil [%s].", uri);
         }
@@ -907,7 +1016,7 @@ public class StencilFactory {
      *            The URI from which the path was read.
      * @return The string value of the given object or null.
      */
-    private static String getString(Type actual, String expression, Object object, int line, URI uri) {
+    private static String getString(Type actual, String expression, Ilk.Box object, int line, URI uri) {
         Ilk.Box box = get(actual, expression, object, line, uri);
         return box == null ? null : diffuser.diffuse(box.object).toString();
     }
@@ -928,20 +1037,35 @@ public class StencilFactory {
      *            The URI from which the path was read.
      * @return A boxed instance of the object.
      */
-    private static <T> Ilk.Box get(Type actual, String expression, Object object, int line, URI uri) {
+    private static <T> Ilk.Box get(Type actual, String expression, Ilk.Box object, int line, URI uri) {
         Path path;
         try {
             path = new Path(expression, false);
         } catch (ParseException e) {
             throw new StencilException(e, "Invalid object path [%s] at line [%d] of [%s].", expression, line, uri);
         }
-        Type type = actual;
+        Type type = object.key.type;
         for (int i = 0; i < path.size(); i++) {
             Part part = path.get(i);
-            if (Map.class.isAssignableFrom(getRawClass(type))) {
+            if (PathEvaluator.class.isAssignableFrom(getRawClass(type))) {
                 if (object != null) {
-                    Map<?, ?> map = (Map<?, ?>) object;
-                    object = map.get(part.getName());
+                    try {
+                        Method method = getRawClass(type).getMethod("get", Ilk.Box.class, Path.class);
+                        object = IlkReflect.invoke(IlkReflect.REFLECTOR, method, object, new Ilk<Ilk.Box>(Ilk.Box.class).box(object), new Ilk<Path>(Path.class).box(path));
+                    } catch (Throwable e) {
+                        throw new StencilException($(e), "Cannot invoke get on PathEvaluator at line [%d] of [%s].", line, uri);
+                    }
+                }
+                type = ((ParameterizedType) type).getActualTypeArguments()[0];
+                break;
+            } else if (Map.class.isAssignableFrom(getRawClass(type))) {
+                if (object != null) {
+                    try {
+                        Method method = getRawClass(type).getMethod("get", Object.class);
+                        object = IlkReflect.invoke(IlkReflect.REFLECTOR, method, object, new Ilk<String>(String.class).box(part.getName()));
+                    } catch (Throwable e) {
+                        throw new StencilException($(e), "Cannot invoke get on map at line [%d] of [%s].", line, uri);
+                    }
                 }
                 type = ((ParameterizedType) type).getActualTypeArguments()[1];
             } else {
@@ -952,22 +1076,20 @@ public class StencilFactory {
                 }
                 if (object != null) {
                     try {
-                        object = getter.get(object);
-                    } catch (ReflectiveException e) {
-                        throw new StencilException(e, "Cannot evaluate [%s] at line [%d] of [%s].", expression, line, uri);
+                        if (getter.getMember() instanceof Method) {
+                            Method method = (Method) getter.getMember();
+                                object = IlkReflect.invoke(IlkReflect.REFLECTOR, method, object);
+                        } else {
+                            Field field = (Field) getter.getMember();
+                            object = IlkReflect.get(IlkReflect.REFLECTOR, field, object);
+                        }
+                    } catch (Throwable e) {
+                        throw new StencilException($(e), "Cannot deference [%s] at line [%d] of [%s].", part.getName(), line, uri);
                     }
                 }
                 type = getActualType(getter.getGenericType(), type, new LinkedList<Map<TypeVariable<?>, Type>>());
             }
         }
-        if (object == null) {
-            return null;
-        }
-        return enbox(object, type);
-    }
-
-    // TODO This is given an object, how is that type-safe?
-    private static <T> Ilk.Box enbox(T object, Type type) {
-        return new Ilk<T>(){}.assign(new Ilk<T>(){}, type).box(object);
+        return object;
     }
 }

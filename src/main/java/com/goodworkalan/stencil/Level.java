@@ -5,6 +5,7 @@ import java.util.Iterator;
 import java.util.Map;
 
 import com.goodworkalan.ilk.Ilk;
+import com.goodworkalan.ilk.inject.Injector;
 
 /**
  * A stack element in a stack that mirrors the decent into the document logic
@@ -13,6 +14,9 @@ import com.goodworkalan.ilk.Ilk;
  * @author Alan Gutierrez
  */
 class Level<T> {
+    /** The injector. */
+    public Injector injector;
+
     /** Whether to skip forwarding events to the transformer handler. */
     public boolean skip;
     
