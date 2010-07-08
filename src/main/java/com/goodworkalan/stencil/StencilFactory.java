@@ -814,7 +814,7 @@ public class StencilFactory {
                         stack.addLast(new Level<T>());
                         stack.getLast().actualizer = new Actualizer<T>(value.key.get(0).type);
                         stack.getLast().command = name;
-                        stack.getLast().ilk = stack.getLast().actualizer.actual().box();
+                        stack.getLast().ilk = new Ilk.Box(stack.getLast().actualizer.actual().key.type);
                         if (output != null) {
                             stack.getLast().each = stack.getLast().actualizer.collection(value).iterator();
                             if (stack.getLast().each.hasNext()) {

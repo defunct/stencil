@@ -57,7 +57,7 @@ public class StencilException extends RuntimeException {
                 throw (Error) e;
             }
         } else if (e instanceof RuntimeException) {
-            if (!(e instanceof IllegalArgumentException)) {
+            if (!(e instanceof SecurityException) && !(e instanceof IllegalArgumentException)) {
                 throw (RuntimeException) e;
             }
         }

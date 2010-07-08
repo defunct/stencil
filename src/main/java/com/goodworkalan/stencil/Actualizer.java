@@ -37,7 +37,7 @@ class Actualizer<T> {
      * @return An actual super type token.
      */
     public Ilk<T> actual() {
-        return ilk.assign(ilk, type);
+        return ilk.assign(Actualizer.class.getTypeParameters()[0], type);
     }
     
     /**
@@ -48,6 +48,6 @@ class Actualizer<T> {
      * @return The contents of the box cast to a collection of this item type.
      */
     public Collection<T> collection(Ilk.Box box) {
-        return box.cast(new Ilk<Collection<T>>(){}.assign(ilk, type));
+        return box.cast(new Ilk<Collection<T>>(){}.assign(Actualizer.class.getTypeParameters()[0], type));
     }
 }
