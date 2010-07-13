@@ -20,11 +20,12 @@ public class StencilProject implements ProjectModule {
     public void build(Builder builder) {
         builder
             .cookbook(JavaProject.class)
-                .produces("com.github.bigeasy.stencil/stencil/0.1")
+                .produces("com.github.bigeasy.stencil/stencil/0.1.0.1")
                 .depends()
                     .production("javax.servlet/servlet-api/2.5")
                     .production("com.github.bigeasy.reflective/reflective-getter/0.+1")
                     .production("com.github.bigeasy.permeate/permeate/0.+1")
+                    .production("com.github.bigeasy.danger/danger/0.+1")
                     .production("com.github.bigeasy.diffuse/diffuse/0.+1")
                     .production("com.github.bigeasy.ilk/ilk-inject/0.+1")
                     .production("com.github.bigeasy.ilk/ilk-loader/0.+1")

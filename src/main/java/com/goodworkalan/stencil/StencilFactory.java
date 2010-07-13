@@ -2,7 +2,6 @@ package com.goodworkalan.stencil;
 
 import static com.goodworkalan.ilk.Types.getActualType;
 import static com.goodworkalan.ilk.Types.getRawClass;
-import static com.goodworkalan.stencil.StencilException.$;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -36,6 +35,7 @@ import java.util.regex.Pattern;
 
 import org.xml.sax.SAXException;
 
+import com.goodworkalan.danger.Danger;
 import com.goodworkalan.diffuse.Diffuser;
 import com.goodworkalan.ilk.Ilk;
 import com.goodworkalan.ilk.IlkReflect;
@@ -159,7 +159,7 @@ public class StencilFactory {
             try {
                 connection = url.openConnection();
             } catch (IOException e) {
-                throw new StencilException(e, "Cannot read [%s].", uri);
+                throw new Danger(e, StencilFactory.class, "cannotReadURL", uri);
             }
             if (connection.getLastModified() > page.lastModified) {
                 page = compile(injector, uri, connection, output);
@@ -349,7 +349,7 @@ public class StencilFactory {
             URL url = getURL(injector, uri);
             connection = url.openConnection();
         } catch (IOException e) {
-            throw new StencilException(e, "Cannot read [%s].", uri);
+            throw new Danger(e, StencilFactory.class, "cannotReadURL", uri);
         }
         return compile(injector, uri, connection, output);
     }
@@ -384,7 +384,7 @@ public class StencilFactory {
                 lines.add(line);
             }
         } catch (IOException e) {
-            throw new StencilException("Cannot read URI resource [%s].", uri);
+            throw new Danger(e, StencilFactory.class, "cannotReadURL", uri);
         }
         return compile(injector, uri, new Stencil(new Page(uri, connection.getLastModified(), lines), 0), output);
     }
@@ -434,12 +434,29 @@ public class StencilFactory {
                 new Ilk<Class<? extends Annotation>>() {}.box(fromQualifier)
         };
         Class<?>[] parameters = new Class<?>[] { Ilk.class, Class.class, Ilk.class, Class.class };
+        Constructor<?> constructor = getVendorAliasConstructor(parameters);
+        Ilk<AliasVendor<?>> vendorIlk = new Ilk<AliasVendor<?>>() {};
         try {
-            Constructor<?> constructor = AliasVendor.class.getConstructor(parameters);
-            Ilk<AliasVendor<?>> vendorIlk = new Ilk<AliasVendor<?>>() {};
             return IlkReflect.newInstance(IlkReflect.REFLECTOR, vendorIlk.key, constructor, arguments).cast(vendorIlk);
-        } catch (Throwable e) {
-            throw new StencilException($(e), "Cannot create alias at line [%d] in [%s].",  line, uri);
+        } catch (Exception e) {
+            throw new Danger(e, StencilFactory.class, "cannotCreateAlias",  line, uri);
+        }
+    }
+
+    /**
+     * Get the constructor of <code>AliasVendor</code> that takes the given
+     * parameters.
+     * 
+     * @param parameters
+     *            The constructor parameters.
+     * @return The constructor.
+     */
+    private Constructor<?> getVendorAliasConstructor(Class<?>[] parameters) {
+        try {
+            return AliasVendor.class.getConstructor(parameters);
+        } catch (Exception e) {
+            // Not thrown unless you've dismantled the JAR.
+            throw new RuntimeException(e);
         }
     }
 
@@ -579,13 +596,13 @@ public class StencilFactory {
                     try {
                         fromIlk = IlkLoader.fromString(Thread.currentThread().getContextClassLoader(), from[0], Collections.<String, Class<?>>emptyMap());
                     } catch (ClassNotFoundException e) {
-                        throw new StencilException(e, "Cannot load type [%s] at line [%s] of [%s].", payload, index, stencil.page.uri);
+                        throw new Danger(e, StencilFactory.class, "cannotLoadType", payload, index, stencil.page.uri);
                     }
                     if (from.length == 2) {
                         try {
                             fromQualifier = Thread.currentThread().getContextClassLoader().loadClass(from[1]).asSubclass(Annotation.class);
                         } catch (ClassNotFoundException e) {
-                            throw new StencilException(e, "Cannot load qualifier [%s] at line [%d] of [%s].", payload, index, stencil.page.uri);
+                            throw new Danger(e, StencilFactory.class, "cannotLoadQualifier", payload, index, stencil.page.uri);
                         }
                     } else {
                         fromQualifier = null;
@@ -608,13 +625,13 @@ public class StencilFactory {
                             try {
                                 toIlk = IlkLoader.fromString(Thread.currentThread().getContextClassLoader(), to[0], Collections.<String, Class<?>>emptyMap());
                             } catch (ClassNotFoundException e) {
-                                throw new StencilException(e, "Cannot load type [%s] at line [%s] of [%s].", from[0], index, stencil.page.uri);
+                                throw new Danger(e, StencilFactory.class, "cannotLoadType", from[0], index, stencil.page.uri);
                             }
                             if (from.length == 2) {
                                 try {
                                     toQualifier = Thread.currentThread().getContextClassLoader().loadClass(to[1]).asSubclass(Annotation.class);
                                 } catch (ClassNotFoundException e) {
-                                    throw new StencilException(e, "Cannot load qualifier [%s] at line [%d] of [%s].", from[1], index, stencil.page.uri);
+                                    throw new Danger(e, StencilFactory.class, "cannotLoadQualifier", from[1], index, stencil.page.uri);
                                 }
                             } else {
                                 toQualifier = null;
@@ -653,7 +670,7 @@ public class StencilFactory {
                         escaper = escape[1];
                     }
                     if (escaper == null) {
-                        throw new StencilException("Missing Escape details at line [%s] of [%s].", index, stencil.page.uri);
+                        throw new Danger(StencilFactory.class, "missingEscapeProperties", index, stencil.page.uri);
                     }
                     URL url = null;
                     Class<?> escaperClass = null;
@@ -691,8 +708,8 @@ public class StencilFactory {
                     } else {
                         try {
                             stack.getLast().escapers.put(key, (Escaper) escaperClass.newInstance());
-                        } catch (Throwable e) {
-                            throw new StencilException($(e), "Cannot create an instance of [%s] at line [%d] of [%s].", escaperClass, index, stencil.page.uri);
+                        } catch (Exception e) {
+                            throw new Danger(e, StencilFactory.class, "cannotCreateEscaper", escaperClass, index, stencil.page.uri);
                         }
                     }
                 } else if (name.equals("Get")) {
@@ -712,13 +729,13 @@ public class StencilFactory {
                         path = pathway[1];
                     }
                     if (path == null) {
-                        throw new StencilException("Invalid or missing Get path at line [%s] of [%s].", index, stencil.page.uri);
+                        throw new Danger(StencilFactory.class, "missingGetPath", index, stencil.page.uri);
                     }
                     String value = getString(ilkType, path, getSelected(stack), index, stencil.page.uri);
                     if (!stack.getLast().skip ) {
                         Escaper escaper = getEscaper(stack, escaperName);
                         if (escaper == null) {
-                            throw new StencilException("Unknown escaper at line [%s] of [%s].", index, stencil.page.uri);
+                            throw new Danger(StencilFactory.class, "unknownEscaper", index, stencil.page.uri);
                         }
                         print(output, escaper.escape(value));
                     }
@@ -791,7 +808,7 @@ public class StencilFactory {
                 } else if (name.equals("Each")) {
                     if (payload == null) {
                         if (!"Each".equals(stack.getLast().command)) {
-                            throw new StencilException("End Each encountered without Each at line [%s] of [%s].", index, stencil.page.uri);
+                            throw new Danger(StencilFactory.class, "mismatchedEndEach", index, stencil.page.uri);
                         }
                         if (output == null || !stack.getLast().each.hasNext()) {
                             stack.removeLast();
@@ -808,7 +825,7 @@ public class StencilFactory {
                             value = get(ilkType, payload, getSelected(stack), index, stencil.page.uri);
                         }
                         if (!Collection.class.isAssignableFrom(getRawClass(value.key.type))) {
-                            throw new StencilException("Missing path attribute for each at line [%s] of [%s].", index, stencil.page.uri);
+                            throw new Danger(StencilFactory.class, "missingEachPath", index, stencil.page.uri);
                         }
                         int lastIndent = stack.getLast().indent;
                         stack.addLast(new Level<T>());
@@ -847,7 +864,7 @@ public class StencilFactory {
                     try {
                         uri = new URI(importation[1]);
                     } catch (URISyntaxException e) {
-                        throw new StencilException(e, "Malformed import URI [%s] at line [%d] of [%s].", index, stencil.page.uri);
+                        throw new Danger(e, StencilFactory.class, "malformedImportURI", index, stencil.page.uri);
                     }
                     uri = stencil.page.uri.resolve(uri);
                     String alias = importation[0];
@@ -872,7 +889,7 @@ public class StencilFactory {
 //                    } else { 
                         if (subStencil == null) {
                             if (payload == null) {
-                                throw new StencilException("Cannot find Stencil [%s] at line [%d] of [%s].", name, index, stencil.page.uri);
+                                throw new Danger(StencilFactory.class, "missingStencil", name, index, stencil.page.uri);
                             }
                             return new Stencil[] { current, null };
                         }
@@ -891,7 +908,7 @@ public class StencilFactory {
                 } else if (blockName != null) {
                     if (blockCount == 0) {
                         if (!blockName.equals(name)) {
-                            throw new StencilException("Exected nested block [%s] missing at line [%d] of [%s].", blockName, index, stencil.page.uri);
+                            throw new Danger(StencilFactory.class, "missingNestedBlock", blockName, index, stencil.page.uri);
                         }
                         blockCount++;
                         if (payload != null) {
@@ -994,7 +1011,7 @@ public class StencilFactory {
         try {
             compile(stack, stencil, null, null, output);
         } catch (IOException e) {
-            throw new StencilException(e, "Cannot emit stencil [%s].", uri);
+            throw new Danger(e, StencilFactory.class, "ioException", uri);
         }
         
         return stencil.page;
@@ -1042,7 +1059,7 @@ public class StencilFactory {
         try {
             path = new Path(expression, false);
         } catch (ParseException e) {
-            throw new StencilException(e, "Invalid object path [%s] at line [%d] of [%s].", expression, line, uri);
+            throw new Danger(e, StencilFactory.class, "Invalid object path [%s] at line [%d] of [%s].", expression, line, uri);
         }
         Type type = object.key.type;
         for (int i = 0; i < path.size(); i++) {
@@ -1053,7 +1070,7 @@ public class StencilFactory {
                         Method method = getRawClass(type).getMethod("get", Ilk.Box.class, Path.class);
                         object = IlkReflect.invoke(IlkReflect.REFLECTOR, method, object, new Ilk<Ilk.Box>(Ilk.Box.class).box(object), new Ilk<Path>(Path.class).box(path));
                     } catch (Throwable e) {
-                        throw new StencilException($(e), "Cannot invoke get on PathEvaluator at line [%d] of [%s].", line, uri);
+                        throw new Danger(e, StencilFactory.class, "Cannot invoke get on PathEvaluator at line [%d] of [%s].", line, uri);
                     }
                 }
                 type = ((ParameterizedType) type).getActualTypeArguments()[0];
@@ -1063,8 +1080,8 @@ public class StencilFactory {
                     try {
                         Method method = getRawClass(type).getMethod("get", Object.class);
                         object = IlkReflect.invoke(IlkReflect.REFLECTOR, method, object, new Ilk<String>(String.class).box(part.getName()));
-                    } catch (Throwable e) {
-                        throw new StencilException($(e), "Cannot invoke get on map at line [%d] of [%s].", line, uri);
+                    } catch (Exception e) {
+                        throw new Danger(e, StencilFactory.class, "cannotInvokeGetOnMap", line, uri);
                     }
                 }
                 type = ((ParameterizedType) type).getActualTypeArguments()[1];
@@ -1072,7 +1089,7 @@ public class StencilFactory {
                 Map<String, Getter> getters = Getters.getGetters(getRawClass(type));
                 Getter getter = getters.get(part.getName());
                 if (getter == null) {
-                    throw new StencilException("Cannot evaluate path [%s] at line [%d] of [%s].", expression, line, uri);
+                    throw new Danger(StencilFactory.class, "invalidObjectPath", expression, line, uri);
                 }
                 if (object != null) {
                     try {
@@ -1083,8 +1100,8 @@ public class StencilFactory {
                             Field field = (Field) getter.getMember();
                             object = IlkReflect.get(IlkReflect.REFLECTOR, field, object);
                         }
-                    } catch (Throwable e) {
-                        throw new StencilException($(e), "Cannot deference [%s] at line [%d] of [%s].", part.getName(), line, uri);
+                    } catch (Exception e) {
+                        throw new Danger(e, StencilFactory.class, "cannotInvokeGet", part.getName(), object.getClass(), line, uri);
                     }
                 }
                 type = getActualType(getter.getGenericType(), type, new LinkedList<Map<TypeVariable<?>, Type>>());
