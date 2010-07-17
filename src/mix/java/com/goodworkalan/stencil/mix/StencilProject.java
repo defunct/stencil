@@ -26,6 +26,7 @@ public class StencilProject implements ProjectModule {
                     .production("com.github.bigeasy.reflective/reflective-getter/0.+1")
                     .production("com.github.bigeasy.permeate/permeate/0.+1")
                     .production("com.github.bigeasy.danger/danger/0.+1")
+                    .production("com.github.bigeasy.class/class-boxer/0.+1")
                     .production("com.github.bigeasy.diffuse/diffuse/0.+1")
                     .production("com.github.bigeasy.ilk/ilk-inject/0.+1")
                     .production("com.github.bigeasy.ilk/ilk-loader/0.+1")

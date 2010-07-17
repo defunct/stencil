@@ -49,6 +49,7 @@ import com.goodworkalan.permeate.Part;
 import com.goodworkalan.permeate.Path;
 import com.goodworkalan.reflective.getter.Getter;
 import com.goodworkalan.reflective.getter.Getters;
+import com.goodworkalan.utility.Primitives;
 
 /**
  * Generates Stencil output using Stencils identified by URIs.
@@ -732,7 +733,7 @@ public class StencilFactory {
                         throw new Danger(StencilFactory.class, "missingGetPath", index, stencil.page.uri);
                     }
                     String value = getString(ilkType, path, getSelected(stack), index, stencil.page.uri);
-                    if (!stack.getLast().skip ) {
+                    if (!stack.getLast().skip) {
                         Escaper escaper = getEscaper(stack, escaperName);
                         if (escaper == null) {
                             throw new Danger(StencilFactory.class, "unknownEscaper", index, stencil.page.uri);
@@ -745,8 +746,8 @@ public class StencilFactory {
                         boolean condition = false;
                         if (value != null) {
                             Class<?> rawClass = getRawClass(value.key.type);
-                            if (rawClass.equals(Boolean.class)) {
-                                condition = value.cast(new Ilk<Boolean>(Boolean.class));
+                            if (Primitives.box(rawClass).equals(Boolean.class)) {
+                                condition = (Boolean) value.object;
                             } else if (Collection.class.isAssignableFrom(rawClass)) {
                                 condition = ! ((Collection<?>) value.object).isEmpty();
                             } else if (Iterator.class.isAssignableFrom(rawClass)) {
