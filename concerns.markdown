@@ -13,6 +13,10 @@ title: Toughts, Concerns and Decisions regarding Stencil
 
 It works, now with the basic utilities envisioned in the initial project.
 
+## Indents
+
+Should I indent with the content or before the content?
+
 ## Navigating Maps
 
 Not all types are going to be strongly typed. String Beans created a parallel
